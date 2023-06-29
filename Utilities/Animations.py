@@ -1,6 +1,6 @@
 import Utilities.Bezier as Bezier
 
-wiggle = {
+wiggle = { # angle (degrees)
     0.0: 3.0,
     0.1: -3.0,
     0.2: 3.0,
@@ -11,6 +11,13 @@ wiggle = {
     0.7: -3.0,
     0.8: 3.0,
     0.9: -3.0,
+    1.0: 0.0
+}
+subtle_hint = { # y position (%)
+    0.0: 0.0,
+    0.25: -0.08,
+    0.5: 0.0,
+    0.75: -0.08,
     1.0: 0.0
 }
 
