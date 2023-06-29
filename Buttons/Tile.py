@@ -31,8 +31,9 @@ class Tile(Button.Button):
         def get_circle_quarters(top_right:bool, top_left:bool, bottom_left:bool, bottom_right:bool) -> tuple[bool,bool,bool,bool]:
             if rotation != 0: return True, True, True, True
             else: return top_right, top_left, bottom_left, bottom_right
-        if self.tile_type != 0: rotation = math.radians(Animations.animate(Animations.wiggle, 0.5, Bezier.ease, ticks/60)) # ANIMATION
-        else: rotation = 0
+        #if self.tile_type != 0: rotation = math.radians(Animations.animate(Animations.wiggle, 0.5, Bezier.ease, ticks/60)) # ANIMATION
+        # else: rotation = 0
+        rotation = 0
         sin_rotation = math.sin(rotation)
         cos_rotation = math.cos(rotation)
         button_surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
