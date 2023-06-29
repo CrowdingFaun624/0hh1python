@@ -13,7 +13,7 @@ class Board(Drawable.Drawable):
         self.size = size
         self.get_board_from_seed()
     def get_board_from_seed(self) -> list[int]:
-        self.full_board, self.empty_board, self.other_data =  LevelCreator.generate(self.size, self.seed)[0]
+        self.full_board, self.empty_board, self.other_data =  LevelCreator.generate(self.size, self.seed)
     def display(self, ticks:int) -> pygame.Surface:
         padding_amount = self.display_size * 0.04
         surface = pygame.Surface((self.display_size * self.size + padding_amount, self.display_size * self.size + padding_amount), pygame.SRCALPHA)
