@@ -36,7 +36,7 @@ def generate_solution(size:int, seed:int=None) -> list[int]:
     def get_row(y_position:int) -> str:
         return "".join(str(i) for i in tiles[y_position * size:(y_position + 1) * size])
 
-    def get_column(x_position:int) -> str: # FIXME: please stop using these godforesaken string operations; they're so slow
+    def get_column(x_position:int) -> str: # TODO: please stop using these godforesaken string operations; they're so slow
         return "".join(str(i) for i in tiles[x_position::size])
 
     def is_full(row_or_column:str) -> bool:
@@ -96,10 +96,7 @@ def generate_solution(size:int, seed:int=None) -> list[int]:
     return tiles
 
 def count_empty_tiles(tiles:list[int]) -> int:
-    output = 0
-    for tile in tiles:
-        if tile == 0: output += 1
-    return output
+    return tiles.count(0)
 
 def generate(size:int, seed:int=None) -> tuple[list[int],list[int],dict[str,any]]:
     '''Returns the solution, the incomplete puzzle, and other data.'''
@@ -113,8 +110,8 @@ def generate(size:int, seed:int=None) -> tuple[list[int],list[int],dict[str,any]
     TOTAL_TRIES = 42
     for i in range(TOTAL_TRIES):
         empty_grid = breakdown(full_grid, size, seed)
-        quality = round(count_empty_tiles(empty_grid) / (size ** 2) * 100)
-        if quality < quality_requirement: break
+        quality = round(count_empty_tiles(empty_grid) / (size ** 2) * 100) # how many empty tiles there are
+        if quality > quality_requirement: break # the more empty tiles, the better. break if it's good enough.
     other_data = {"seed": seed, "quality": quality}
     random.seed(after_seed)
     return full_grid, empty_grid, other_data
@@ -126,7 +123,7 @@ def solve(size:int, tiles_pos:list[dict[str,int|tuple[int,int]]], current_tile:d
     same_column:list[dict[str,int|tuple[int,int]]] = []
     same_row:list[dict[str,int|tuple[int,int]]] = []
     other_tiles:list[dict[str,int|tuple[int,int]]] = []
-    for tile in tiles_pos: # TODO: the result is out of order; it should be in order.
+    for tile in tiles_pos:
         if tile["pos"][0] == current_tile["pos"][0]:
             same_column.append(tile) # contains `size` items, including `current_tile`.
         elif tile["pos"][1] == current_tile["pos"][1]: # since this is elif, it doesn't catch `current_tile` again.
@@ -138,7 +135,7 @@ def solve(size:int, tiles_pos:list[dict[str,int|tuple[int,int]]], current_tile:d
     # It does it in this order since tiles in the same row or column have a much greater impact on the desired
     # tile than other tiles.
     # TODO: make it do some thing where it avoids checking the current tile again if it hasn't found anything yet
-    for s in range((size ** 2) * 50): # it can loop around again and continue trying to solve if it fails the first time.
+    for total_tries in range((size ** 2) * 50): # it can loop around again and continue trying to solve if it fails the first time.
         # this range can theoretically be extended to infinity, since it will break if it can't find any tile at all.
         # It is not necessary to raise for bigger boards (probably), since it scales with the area.
         empty_tile = None # the tile that it attempts to solve for to see if the current tile is necessary
@@ -149,23 +146,23 @@ def solve(size:int, tiles_pos:list[dict[str,int|tuple[int,int]]], current_tile:d
                     empty_tile = tile
                     break
                 # else: i.append(tile) # just used for hints and stuff
-        if current_tile is not None and empty_tile is not None and current_tile["pos"] == empty_tile["pos"]: # FIXME: remove check for current_tile being None
+        if empty_tile is not None and current_tile["pos"] == empty_tile["pos"]:
             # if the empty tile is the same as the current tile.
             return True
         # elif empty_tile is not None and len(i) > 0 and tile is not None: # this is only used when hint object is provided
         #     raise NotImplementedError()
         else:
             if empty_tile is None: break # occurs if it failed to find any tiles
-            if not row_or_column_is_valid(size, tiles_pos):
+            if not grid_is_valid(size, tiles_pos):
                 # this is technically not necessary; the part where it checks if the board is valid is only for hints.
                 print_board(tiles_pos)
                 raise RuntimeError("An error occured in the tile-solving process on tile", tile["pos"])
     else: print("The board expired")
     # NOTE: before it returns, it also activates a function `v()`, which does nothing. It could potentially be reassigned somewhere
     return count_empty_tiles([tile["type"] for tile in tiles_pos]) == 0 # occurs if the tile is truly impossible to find.
-    # If there are no empty tiles, it assumes the tile is not necessary for completing the board.
+    # If there are no empty tiles, then the board is completable, and completable without the current tile
 
-def row_or_column_is_valid(size:int, tiles:list[dict[str,int|tuple[int,int]]]) -> bool: # FIXME: rename me to grid_is_valid or something
+def grid_is_valid(size:int, tiles:list[dict[str,int|tuple[int,int]]]) -> bool:
     '''Returns False if the row/column is not valid, because of three-in-a-row, unbalanced, or duplicate'''
     # I'm getting serious deja-vu right now; I could've sworn I've already written this.
     three_in_a_row_regular_expression = re.compile(r"1{3}|2{3}")
@@ -223,7 +220,7 @@ def see_if_it_has_a_clone(tile:dict[str,int|tuple[int,int]], other_tile:dict[str
     for value in (1, 2):
         tile["type"] = value
         other_tile["type"] = get_other_tile_value(value)
-        if not row_or_column_is_valid(size, tiles): # TODO: this function is much more expensive than necessary;
+        if not grid_is_valid(size, tiles): # TODO: this function is much more expensive than necessary;
             # it checks every single line on the board to detect a clone, three-in-a-row, or unbalanced for everything.
             # It is not necessary to do that.
             tile["type"] = get_other_tile_value(value)
@@ -238,7 +235,7 @@ def collect(size:int, tile:dict[str,int|tuple[int,int]], tiles:list[dict[str,int
     '''The possible tiles based on rules for removing during breakdown, for reasons such as cap-at-two-in-a-row, between, or others.'''
     DIRECTIONS = {"left": (-1, 0), "right": (1, 0), "down": (0, 1), "up": (0, -1)} # TODO: turn into list instead of dict
     for tile_value1 in (1, 2):
-        tile_value2 = {1: 2, 2: 1}[tile_value1] # FIXME
+        tile_value2 = 3 - tile_value1 # gets the other tile value
         for direction in list(DIRECTIONS.values()): # caps at two in a row
             tile_in_direction1 = get_tile_in_direction(tiles, tile, direction)
             if tile_in_direction1 is None: continue
@@ -275,7 +272,8 @@ def collect(size:int, tile:dict[str,int|tuple[int,int]], tiles:list[dict[str,int
         for row_tile in row:
             if row_tile["type"] != 0: continue
             if row_tile["pos"][0] != tile["pos"][0]:
-                tile["emptyRowPairWith"] = row_tile # FIXME: add break
+                tile["emptyRowPairWith"] = row_tile
+                break
     column = get_column(tiles, tile["pos"][0])
     column_string = stringify_column(column)
     if column_string.count("1") >= max_per_column:
@@ -286,7 +284,8 @@ def collect(size:int, tile:dict[str,int|tuple[int,int]], tiles:list[dict[str,int
         for column_tile in column:
             if column_tile["type"] != 0: continue
             if column_tile["pos"][1] != tile["pos"][1]:
-                tile["emptyColPairWith"] = column_tile # FIXME: add break
+                tile["emptyColPairWith"] = column_tile
+                break
     if "emptyRowPairWith" not in tile: tile["emptyRowPairWith"] = None
     if "emptyColPairWith" not in tile: tile["emptyColPairWith"] = None
     return None
@@ -315,6 +314,13 @@ def get_tile_in_direction(tiles:list[dict[str,int|tuple[int,int]]], tile:dict[st
         if tiles_tile["pos"] == (new_x, new_y): return tiles_tile
     else: return None
 
+# class Tile():
+#     def __init__(self, pos:tuple[int,int], value:int) -> None:
+#         self.pos = pos
+#         self.value = value
+#         self.empty_row_pair_with = None # the other empty tile in a row with two empty tiles
+#         self.empty_column_pair_with = None # the other empty tile in a column with two empty tiles
+# 
 def breakdown(tiles:list[int], size:int, seed) -> list[int]:
     '''Removes tiles from the board so it's an actual puzzle.'''
     # basically how this works is that it picks a random tile from the board,
@@ -348,14 +354,14 @@ def breakdown(tiles:list[int], size:int, seed) -> list[int]:
     random_range = list(range(size ** 2))
     random.shuffle(random_range)
     index1 = 0
-    index2 = 0
+    since_last_success = 0
     # `index2` causes it to break early if it does not find any tiles
     # within 6 iterations. It is not necessary to breakdown, but it probably
     # speeds it up greatly. The existence of this variable is why some tiles
     # clearly not necessary to the completion of the board exist on larger sizes.
     # If this is removed, the quality stuff may be removed, too. If larger board
     # sizes are created, the value should be raised above 6.
-    while index1 < len(tiles_pos) and index2 < 6:
+    while index1 < len(tiles_pos) and since_last_success < 6:
         tile_index = random_range[index1]
         current_tile = tiles_pos[tile_index] # current_tile is tileToSolve in the code
         index1 += 1
@@ -366,13 +372,14 @@ def breakdown(tiles:list[int], size:int, seed) -> list[int]:
         should_reset_index2 = solve(size, tiles_pos, current_tile)
         restore_state() # this undoes all of the tile wonkiness (setting them back to their original value)
         # after this, only one tile, `current_tile`, should have changed.
-        if should_reset_index2: index2 = 0
+        if should_reset_index2: since_last_success = 0
         else: current_tile["type"] = current_tile_type # resets the tile's value in case it cannot be extrapolated from current board
+        # print_board(tiles_pos)
     # The reason that you can just solve for the current tile instead of the whole board
     # when checking if you need the tile is that 
     save_state()
     random.seed(after_seed)
-    if 1 not in output or 2 not in output:
+    if 1 not in output and 2 not in output:
         raise RuntimeError("The board is empty!")
     return output
 

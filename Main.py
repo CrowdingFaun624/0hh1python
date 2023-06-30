@@ -13,7 +13,7 @@ clock = pygame.time.Clock()
 
 
 objects = [
-    Board.Board(6)
+    Board.Board(12)
 ]
 
 running = True
