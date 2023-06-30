@@ -32,7 +32,7 @@ def time_test() -> dict[int,dict[str,any]]:
         all_times:list[int] = []
         for i in range(REPEAT_COUNT[size]):
             start_time = time.time()
-            LevelCreator.generate(size)
+            LevelCreator.generate(size, i)
             end_time = time.time()
             time_elapsed = end_time - start_time
             all_times.append(time_elapsed)
