@@ -1,3 +1,4 @@
+import cProfile
 import random
 import re
 from copy import deepcopy
@@ -27,7 +28,6 @@ def generate_solution(size:int, seed:int=None) -> list[int]:
     def clear_row_from_tiles(y:int, situation) -> None:
         for x_position in range(size):
             set_tile_to(x_position, y, 0)
-        if output_rows[y] is None: assert False
         output_rows[y] = None
         if y in wave_collapse_storage and wave_collapse_storage[y] is not None:
             valid_rows.append(wave_collapse_storage[y])
@@ -45,7 +45,7 @@ def generate_solution(size:int, seed:int=None) -> list[int]:
 
     def is_invalid_base_0(row_or_column:str) -> bool:
         '''Detects the invalidity of a row or column if red is 0 and blue is 1'''
-        return bool(re.search(three_in_a_row_regular_expression, row_or_column)) or row_or_column.count("0") > max_per_row or row_or_column.count("1") > max_per_row
+        return bool(re.search(three_in_a_row_regular_expression_base_0, row_or_column)) or row_or_column.count("0") > max_per_row or row_or_column.count("1") > max_per_row
 
     def is_invalid_base_1(row_or_column:str) -> bool:
         '''Detects the invalidity of a row or column if empty is 0, red is 1, and blue is 2'''
@@ -60,7 +60,7 @@ def generate_solution(size:int, seed:int=None) -> list[int]:
     max_per_col = size // 2
     valid_rows:list[str] = []
 
-    three_in_a_row_regular_expression = re.compile(r"0{3}|1{3}")
+    three_in_a_row_regular_expression_base_0 = re.compile(r"0{3}|1{3}")
     three_in_a_row_regular_expression_base_1 = re.compile(r"1{3}|2{3}")
     for index in range(2**size):
         index_string = bin(index)[2:].zfill(size)
@@ -88,7 +88,6 @@ def generate_solution(size:int, seed:int=None) -> list[int]:
             if row_tries[y_position] >= len(valid_rows):
                 row_tries[y_position] = 0
                 for remove_index in range(1, y_position):
-                    assert remove_index != y_position
                     clear_row_from_tiles(remove_index,"iter")
                     row_tries[remove_index] = 0
                 y_position = 1
@@ -139,30 +138,21 @@ def solve(size:int, tiles_pos:list[dict[str,int|tuple[int,int]]], current_tile:d
         # this range can theoretically be extended to infinity, since it will break if it can't find any tile at all.
         # It is not necessary to raise for bigger boards (probably), since it scales with the area.
         empty_tile = None # the tile that it attempts to solve for to see if the current tile is necessary
-        # i = []
         for tile in solve_function_tiles: # the index of this resets every time it finds a tile's value, since it breaks.
             if tile["type"] == 0:
                 if breakdown_tile(size, tile, tiles_pos): # setting of the tile's type occurs in here. Tile's type is set to 0 in `breakdown`
                     empty_tile = tile
                     break
-                # else: i.append(tile) # just used for hints and stuff
         if empty_tile is not None and current_tile["pos"] == empty_tile["pos"]:
             # if the empty tile is the same as the current tile.
             return True
-        # elif empty_tile is not None and len(i) > 0 and tile is not None: # this is only used when hint object is provided
-        #     raise NotImplementedError()
-        else:
-            if empty_tile is None: break # occurs if it failed to find any tiles
-            if not grid_is_valid(size, tiles_pos):
-                # this is technically not necessary; the part where it checks if the board is valid is only for hints.
-                print_board(tiles_pos)
-                raise RuntimeError("An error occured in the tile-solving process on tile", tile["pos"])
+        elif empty_tile is None: break # occurs if it failed to find any tiles
     else: print("The board expired")
     # NOTE: before it returns, it also activates a function `v()`, which does nothing. It could potentially be reassigned somewhere
     return count_empty_tiles([tile["type"] for tile in tiles_pos]) == 0 # occurs if the tile is truly impossible to find.
     # If there are no empty tiles, then the board is completable, and completable without the current tile
 
-def grid_is_valid(size:int, tiles:list[dict[str,int|tuple[int,int]]]) -> bool:
+def grid_is_valid(size:int, tiles:list[dict[str,int|tuple[int,int]]]) -> bool: # NOTE: this is no longer called.
     '''Returns False if the row/column is not valid, because of three-in-a-row, unbalanced, or duplicate'''
     # I'm getting serious deja-vu right now; I could've sworn I've already written this.
     three_in_a_row_regular_expression = re.compile(r"1{3}|2{3}")
@@ -173,13 +163,13 @@ def grid_is_valid(size:int, tiles:list[dict[str,int|tuple[int,int]]]) -> bool:
     already_columns:set[str] = set()
     already_rows:set[str] = set()
     for index in range(size):
-        column = stringify_column(get_column(tiles, index))
+        column = stringify_row_or_column(get_column(tiles, index, size))
         if is_invalid(column):
             return False
         elif column.count("0") == 0:
             if column in already_columns: return False
             else: already_columns.add(column)
-        row = stringify_row(get_row(tiles, index))
+        row = stringify_row_or_column(get_row(tiles, index, size))
         if is_invalid(row):
             return False
         elif row.count("0") == 0:
@@ -191,25 +181,17 @@ def breakdown_tile(size:int, tile:dict[str,int|tuple[int,int]], tiles:list[dict[
     '''Sets a tile to its value; returns if it did that. This does not receive the `current_tile`, but instead a (probably)
     different, empty tile determined by the `solve` function.'''
     # NOTE: if you wish to make the produced puzzles harder, modify this function to include additional rules.
-    collection = collect(size, tile, tiles)
+    collection, empty_row_pair_with, empty_column_pair_with = collect(size, tile, tiles)
     if collection is not None:
-        assert tile["type"] == 0 # this is what it always is in the website
         tile["type"] = collection
-        # I think that the reason it sets the tile back to its original value
-        # in the line above is because it is waiting for that tile to be the
-        # same as tileToSolve, so it resets them so that it can find them
-        # correctly or something
         return True
     # this really should not give a KeyError due to unboundedness. if so, please scream
-    elif tile["emptyColPairWith"] is not None and see_if_it_has_a_clone(tile, tile["emptyColPairWith"], size, tiles):
+    elif empty_column_pair_with is not None and see_if_it_has_a_clone(tile, empty_column_pair_with, size, tiles):
         # thankfully most of the code that would be here is avoided since hints are not included in this
-        tile["emptyColPairWith"] = None; tile["emptyRowPairWith"] = None
         return True
-    elif tile["emptyRowPairWith"] is not None and see_if_it_has_a_clone(tile, tile["emptyRowPairWith"], size, tiles):
-        tile["emptyColPairWith"] = None; tile["emptyRowPairWith"] = None
+    elif empty_row_pair_with is not None and see_if_it_has_a_clone(tile, empty_row_pair_with, size, tiles):
         return True
     else:
-        tile["emptyColPairWith"] = None; tile["emptyRowPairWith"] = None
         return False
 
 def see_if_it_has_a_clone(tile:dict[str,int|tuple[int,int]], other_tile:dict[str,int|tuple[int,int]], size:int, tiles:list[dict[str,int|tuple[int,int]]]) -> bool:
@@ -220,107 +202,94 @@ def see_if_it_has_a_clone(tile:dict[str,int|tuple[int,int]], other_tile:dict[str
     for value in (1, 2):
         tile["type"] = value
         other_tile["type"] = get_other_tile_value(value)
-        if not grid_is_valid(size, tiles): # TODO: this function is much more expensive than necessary;
-            # it checks every single line on the board to detect a clone, three-in-a-row, or unbalanced for everything.
-            # It is not necessary to do that.
+        if row_or_column_is_cloning(tile, other_tile, tiles, size):
             tile["type"] = get_other_tile_value(value)
-            other_tile["type"] = 0 # TODO: see if this is more efficient if you set this to `value` instead of 0.
+            other_tile["type"] = value
             return True # in javascript it returns 1, not true
     else:
         tile["type"] = 0
         other_tile["type"] = 0
         return False
 
-def collect(size:int, tile:dict[str,int|tuple[int,int]], tiles:list[dict[str,int|tuple[int,int]]]) -> int|None:
+def row_or_column_is_cloning(tile:dict[str,int|tuple[int,int]], other_tile:dict[str,int|tuple[int,int]], tiles:dict[str,int|tuple[int,int]], size:int) -> bool:
+    is_row = tile["pos"][0] != other_tile["pos"][0] # if their x-positions are the same, it is a column
+    this_index = tile["pos"][int(is_row)]
+    row_or_column = get_row(tiles, this_index, size) if is_row else get_column(tiles, this_index, size)
+    this_row_or_column_string = stringify_row_or_column(row_or_column)
+    for index in range(size):
+        if index == this_index: continue
+        row_or_column = get_row(tiles, index, size) if is_row else get_column(tiles, index, size)
+        row_or_column_string = stringify_row_or_column(row_or_column)
+        if this_row_or_column_string == row_or_column_string: return True
+    else: return False
+
+def collect(size:int, tile:dict[str,int|tuple[int,int]], tiles:list[dict[str,int|tuple[int,int]]]) -> tuple[int|None,None|dict[str,int|tuple[int,int]],None|dict[str,int|tuple[int,int]]]:
     '''The possible tiles based on rules for removing during breakdown, for reasons such as cap-at-two-in-a-row, between, or others.'''
-    DIRECTIONS = {"left": (-1, 0), "right": (1, 0), "down": (0, 1), "up": (0, -1)} # TODO: turn into list instead of dict
+    DIRECTIONS = [(-1, 0), (1, 0), (0, 1), (0, -1)]
     for tile_value1 in (1, 2):
         tile_value2 = 3 - tile_value1 # gets the other tile value
-        for direction in list(DIRECTIONS.values()): # caps at two in a row
-            tile_in_direction1 = get_tile_in_direction(tiles, tile, direction)
+        for direction in DIRECTIONS: # caps at two in a row
+            tile_in_direction1 = get_tile_in_direction(tiles, tile, direction, size)
             if tile_in_direction1 is None: continue
-            tile_in_direction2 = get_tile_in_direction(tiles, tile_in_direction1, direction)
+            tile_in_direction2 = get_tile_in_direction(tiles, tile_in_direction1, direction, size)
             if tile_in_direction2 is None: continue
             if tile_in_direction1["type"] == tile_value1 and tile_in_direction2["type"] == tile_value1:
-                if tile_value2 == 2:
-                    assert tile_in_direction1["type"] == 1
-                    assert tile_in_direction2["type"] == 1
-                    assert tile_in_direction1["type"] == tile_in_direction2["type"]
-                elif tile_value2 == 1:
-                    assert tile_in_direction1["type"] == 2
-                    assert tile_in_direction2["type"] == 2
-                    assert tile_in_direction1["type"] == tile_in_direction2["type"]
-                else: raise ValueError("Aa")
-                return tile_value2
-        left_tile = get_tile_in_direction(tiles, tile, DIRECTIONS["left"])
-        right_tile = get_tile_in_direction(tiles, tile, DIRECTIONS["right"])
-        if left_tile is not None and right_tile is not None and left_tile["type"] == tile_value1 and right_tile["type"] == tile_value1:
-            return tile_value2
-        up_tile = get_tile_in_direction(tiles, tile, DIRECTIONS["up"])
-        down_tile = get_tile_in_direction(tiles, tile, DIRECTIONS["down"])
-        if up_tile is not None and down_tile is not None and up_tile["type"] == tile_value1 and down_tile["type"] == tile_value1:
-            return tile_value2
-    row = get_row(tiles, tile["pos"][1])
-    row_string = stringify_row(row)
+                return tile_value2, None, None
+        left_tile = get_tile_in_direction(tiles, tile, DIRECTIONS[0], size)
+        if left_tile is not None:
+            right_tile = get_tile_in_direction(tiles, tile, DIRECTIONS[1], size)
+            if right_tile is not None and left_tile["type"] == tile_value1 and right_tile["type"] == tile_value1:
+                return tile_value2, None, None
+        up_tile = get_tile_in_direction(tiles, tile, DIRECTIONS[3], size)
+        if up_tile is not None:
+            down_tile = get_tile_in_direction(tiles, tile, DIRECTIONS[2], size)
+            if down_tile is not None and up_tile["type"] == tile_value1 and down_tile["type"] == tile_value1:
+                return tile_value2, None, None
+    row = get_row(tiles, tile["pos"][1], size)
+    row_string = stringify_row_or_column(row)
     max_per_row = size // 2
     max_per_column = size // 2
+    empty_row_pair_with = None; empty_column_pair_with = None
     if row_string.count("1") >= max_per_row:
-        return 2
+        return 2, None, None
     elif row_string.count("2") >= max_per_row:
-        return 1
+        return 1, None, None
     elif row_string.count("0") == 2: # this is used for if it fails to find one possible value for the tile.
         for row_tile in row:
             if row_tile["type"] != 0: continue
             if row_tile["pos"][0] != tile["pos"][0]:
-                tile["emptyRowPairWith"] = row_tile
+                empty_row_pair_with = row_tile
                 break
-    column = get_column(tiles, tile["pos"][0])
-    column_string = stringify_column(column)
+    column = get_column(tiles, tile["pos"][0], size)
+    column_string = stringify_row_or_column(column)
     if column_string.count("1") >= max_per_column:
-        return 2
+        return 2, empty_row_pair_with, None
     elif column_string.count("2") >= max_per_column:
-        return 1
+        return 1, empty_row_pair_with, None
     elif column_string.count("0") == 2:
         for column_tile in column:
             if column_tile["type"] != 0: continue
             if column_tile["pos"][1] != tile["pos"][1]:
-                tile["emptyColPairWith"] = column_tile
+                empty_column_pair_with = column_tile
                 break
-    if "emptyRowPairWith" not in tile: tile["emptyRowPairWith"] = None
-    if "emptyColPairWith" not in tile: tile["emptyColPairWith"] = None
-    return None
+    return None, empty_row_pair_with, empty_column_pair_with
 
-def stringify_row_or_column(tiles:list[dict[str,int|tuple[int,int]]], is_row:bool) -> str:
-    position_index = {True: 0, False: 1}[is_row]
-    output = ""
-    width = len(tiles)
-    for position in range(width):
-        for tile in tiles:
-            if tile["pos"][position_index] == position: output += str(tile["type"]); break
-    return output
-def stringify_row(tiles:list[dict[str,int|tuple[int,int]]]) -> str:
-    return stringify_row_or_column(tiles, True)
-def stringify_column(tiles:list[dict[str,int|tuple[int,int]]]) -> str:
-    return stringify_row_or_column(tiles, False)
-def get_row(tiles:list[dict[str,int|tuple[int,int]]], y_position:int) -> list[dict[str,int|tuple[int,int]]]:
-    return [tile for tile in tiles if tile["pos"][1] == y_position]
-def get_column(tiles:list[dict[str,int|tuple[int,int]]], x_position:int) -> list[dict[str,int|tuple[int,int]]]:
-    return [tile for tile in tiles if tile["pos"][0] == x_position]
+def stringify_row_or_column(tiles:list[dict[str,int|tuple[int,int]]]) -> str:
+    '''Stringifies a list of `size` tiles'''
+    return "".join([str(tile["type"]) for tile in tiles])
+def get_row(tiles:list[dict[str,int|tuple[int,int]]], y_position:int, size:int) -> list[dict[str,int|tuple[int,int]]]:
+    return [tiles[index] for index in range(y_position * size, (y_position + 1) * size, 1)]
+def get_column(tiles:list[dict[str,int|tuple[int,int]]], x_position:int, size:int) -> list[dict[str,int|tuple[int,int]]]:
+    return [tiles[index] for index in range(x_position, len(tiles), size)]
 
-def get_tile_in_direction(tiles:list[dict[str,int|tuple[int,int]]], tile:dict[str,int|tuple[int,int]], direction:tuple[int,int]) -> dict[str,int|tuple[int,int]]:
+def get_tile_in_direction(tiles:list[dict[str,int|tuple[int,int]]], tile:dict[str,int|tuple[int,int]], direction:tuple[int,int], size:int) -> dict[str,int|tuple[int,int]]|None:
     old_x, old_y = tile["pos"]
-    new_x, new_y = old_x + direction[0], old_y + direction[1]
-    for tiles_tile in tiles:
-        if tiles_tile["pos"] == (new_x, new_y): return tiles_tile
+    old_index = old_x + (size * old_y)
+    new_index = old_index + direction[0] + (size * direction[1])
+    if new_index > 0 and new_index < len(tiles):
+        return tiles[new_index]
     else: return None
 
-# class Tile():
-#     def __init__(self, pos:tuple[int,int], value:int) -> None:
-#         self.pos = pos
-#         self.value = value
-#         self.empty_row_pair_with = None # the other empty tile in a row with two empty tiles
-#         self.empty_column_pair_with = None # the other empty tile in a column with two empty tiles
-# 
 def breakdown(tiles:list[int], size:int, seed) -> list[int]:
     '''Removes tiles from the board so it's an actual puzzle.'''
     # basically how this works is that it picks a random tile from the board,
@@ -341,9 +310,8 @@ def breakdown(tiles:list[int], size:int, seed) -> list[int]:
     def restore_state() -> None:
         '''Restores the output to tiles_pos'''
         for index, value in enumerate(deepcopy(output)):
-            x_pos = index % size; y_pos = index // size
-            for tile in tiles_pos:
-                if tile["pos"] == (x_pos, y_pos): tile["type"] = value
+            tile = tiles_pos[index]
+            tile["type"] = value
 
 
     if seed is None: seed = random.randint(-2147483648, 2147483647)
@@ -396,7 +364,6 @@ def print_board(tiles:list[int]|str|list[dict[str,int|tuple[int,int]]]) -> None:
             index:int = y_pos * width + x_pos
             new_tiles[index] = tile["type"]
         tiles = list(new_tiles.values())
-        assert None not in tiles
 
     width = int(width)
     emojis = {0: "⬛", 1: "🟥", 2: "🟦"}
@@ -407,7 +374,9 @@ def print_board(tiles:list[int]|str|list[dict[str,int|tuple[int,int]]]) -> None:
     print(output)
 
 if __name__ == "__main__":
-    full, empty, other_data = generate(4)
+    # full, empty, other_data = cProfile.run("generate(14, 99)")
+    full, empty, other_data = generate(14, 99)
+
     print("FULL:")
     print_board(full)
     print("EMPTY:")

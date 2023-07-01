@@ -25,8 +25,8 @@ def test_a_lot() -> None:
         time.sleep(0.25)
 
 def time_test() -> dict[int,dict[str,any]]:
-    SIZES = [4, 6, 8, 10, 12]
-    REPEAT_COUNT = {4: 3797, 6: 405, 8: 65, 10: 29, 12: 8} # will take 5 minutes and 15 seconds
+    SIZES = [4, 6, 8, 10, 12, 14, 16]
+    REPEAT_COUNT = {4: 6487, 6: 869, 8: 183, 10: 52, 12: 18, 14: 8, 16: 2} # will take 2 minutes and 20 seconds
     output:dict[int,dict[str,any]] = {}
     for size in SIZES:
         all_times:list[int] = []
