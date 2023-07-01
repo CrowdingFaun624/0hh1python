@@ -250,15 +250,15 @@ def collect(size:int, tile:dict[str,int|tuple[int,int]], tiles:list[dict[str,int
     max_per_row = size // 2
     max_per_column = size // 2
     empty_row_pair_with = None; empty_column_pair_with = None
+    this_tile_x, this_tile_y = tile["pos"]
     if row_string.count("1") >= max_per_row:
         return 2, None, None
     elif row_string.count("2") >= max_per_row:
         return 1, None, None
     elif row_string.count("0") == 2: # this is used for if it fails to find one possible value for the tile.
-        for row_tile in row:
-            if row_tile["type"] != 0: continue
-            if row_tile["pos"][0] != tile["pos"][0]:
-                empty_row_pair_with = row_tile
+        for index, row_tile in enumerate(row_string):
+            if row_tile == 0 and index != this_tile_x:
+                empty_row_pair_with = row[index]
                 break
     column = get_column(tiles, tile["pos"][0], size)
     column_string = stringify_row_or_column(column)
@@ -267,10 +267,9 @@ def collect(size:int, tile:dict[str,int|tuple[int,int]], tiles:list[dict[str,int
     elif column_string.count("2") >= max_per_column:
         return 1, empty_row_pair_with, None
     elif column_string.count("0") == 2:
-        for column_tile in column:
-            if column_tile["type"] != 0: continue
-            if column_tile["pos"][1] != tile["pos"][1]:
-                empty_column_pair_with = column_tile
+        for index, column_tile in enumerate(column_string):
+            if column_tile == 0 and index != this_tile_y:
+                empty_column_pair_with = column[index]
                 break
     return None, empty_row_pair_with, empty_column_pair_with
 
@@ -381,3 +380,4 @@ if __name__ == "__main__":
     print_board(full)
     print("EMPTY:")
     print_board(empty)
+# TODO: Experiment with removing tiles_pos and just having list of values in all circumstances.
