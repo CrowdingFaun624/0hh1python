@@ -282,10 +282,10 @@ def get_column(tiles:list[dict[str,int|tuple[int,int]]], x_position:int, size:in
     return [tiles[index] for index in range(x_position, len(tiles), size)]
 
 def get_tile_in_direction(tiles:list[dict[str,int|tuple[int,int]]], tile:dict[str,int|tuple[int,int]], direction:tuple[int,int], size:int) -> dict[str,int|tuple[int,int]]|None:
-    old_x, old_y = tile["pos"]
-    old_index = old_x + (size * old_y)
-    new_index = old_index + direction[0] + (size * direction[1])
-    if new_index > 0 and new_index < len(tiles):
+    old_pos = tile["pos"]
+    new_pos = (old_pos[0] + direction[0], old_pos[1] + direction[1])
+    if new_pos[0] >= 0 and new_pos[0] < size and new_pos[1] >= 0 and new_pos[1] < size:
+        new_index = new_pos[0] + (size * new_pos[1])
         return tiles[new_index]
     else: return None
 
@@ -374,7 +374,7 @@ def print_board(tiles:list[int]|str|list[dict[str,int|tuple[int,int]]]) -> None:
 
 if __name__ == "__main__":
     # full, empty, other_data = cProfile.run("generate(14, 99)")
-    full, empty, other_data = generate(14, 99)
+    full, empty, other_data = generate(12, 99)
 
     print("FULL:")
     print_board(full)
