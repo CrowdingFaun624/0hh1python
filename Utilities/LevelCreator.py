@@ -119,6 +119,7 @@ def solve(size:int, tiles_values:list[int], current_tile_value:int, current_tile
     current_tile_pos = get_pos(current_tile_index, size)
     for tile_index in range(len(tiles_values)):
         tile_pos = get_pos(tile_index, size)
+        if tile_pos == current_tile_pos: continue
         if tile_pos[0] == current_tile_pos[0]:
             same_column.append(tile_index) # contains `size` items, including `current_tile`.
         elif tile_pos[1] == current_tile_pos[1]: # since this is elif, it doesn't catch `current_tile` again.
@@ -140,10 +141,8 @@ def solve(size:int, tiles_values:list[int], current_tile_value:int, current_tile
                 if breakdown_tile(size, tiles_values, tile_value, tile_index): # setting of the tile's type occurs in here. Tile's type is set to 0 in `breakdown`
                     empty_tile_index = tile_index
                     break
-        if empty_tile_index is not None and current_tile_index == empty_tile_index:
-            # if the empty tile is the same as the current tile.
-            return True
-        elif empty_tile_index is None: break # occurs if it failed to find any tiles
+        if empty_tile_index is None: break # occurs if it failed to find any tiles
+        elif current_tile_index == empty_tile_index: return True # if the empty tile is the same as the current tile.
     else: print("The board expired")
     # NOTE: before it returns, it also activates a function `v()`, which does nothing. It could potentially be reassigned somewhere
     return count_empty_tiles(tiles_values) == 0
@@ -274,7 +273,7 @@ def collect(size:int, tiles_values:list[int], tile_value:int, tile_index:int) ->
             if column_values[index] == 0 and index != tile_pos[1]:
                 empty_column_pair_with = column_tile_index
                 break
-   
+
     return None, empty_row_pair_with, empty_column_pair_with
 
 def get_values(tiles_values:list[int], indexes:list[int]) -> list[int]:
@@ -355,7 +354,7 @@ def print_board(tiles:list[int]|str) -> None:
 
 if __name__ == "__main__":
     # full, empty, other_data = cProfile.run("generate(14, 99)")
-    full, empty, other_data = generate(4, 2)
+    full, empty, other_data = generate(4, 1024)
 
     print("FULL:")
     print_board(full)
