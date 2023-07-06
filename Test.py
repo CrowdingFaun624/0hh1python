@@ -1,3 +1,5 @@
+import json
+import os
 from statistics import mean, median
 import time
 
@@ -22,7 +24,6 @@ def test_a_lot() -> None:
         print()
         index += 1
         index = index % pattern_length
-        time.sleep(0.25)
 
 def time_test() -> dict[int,dict[str,any]]:
     SIZES = [4, 6, 8, 10, 12, 14, 16]
@@ -42,5 +43,21 @@ def time_test() -> dict[int,dict[str,any]]:
     print(output)
     return output
 
+def get_seed_hashes(size:int=4, count:int|None=None, file:str|None=None) -> None:
+    if file is not None and os.path.exists(file): raise FileExistsError("Cannot write to existing file!")
+    REPEAT_COUNT = {4: 6487, 6: 869, 8: 183, 10: 52, 12: 18, 14: 8, 16: 2} # will take 2 minutes and 20 seconds
+    if count is None: count = REPEAT_COUNT[size]
+    output:dict[int,int] = {}
+    for seed in range(count):
+        full, empty, data = LevelCreator.generate(size, seed)
+        trinary_string = "".join([str(i) for i in empty])
+        result_int = int(trinary_string, 3)
+        output[seed] = result_int
+    if file is not None:
+        if file is not None and os.path.exists(file): raise FileExistsError("Cannot write to existing file!")
+        with open(file, "wt") as f:
+            f.write(json.dumps(output, indent=2))
+    print(output)
+
 if __name__ == "__main__":
-    time_test()
+    get_seed_hashes(file="C:/Users/ander/Downloads/0hh1_dump_with_positions.json")

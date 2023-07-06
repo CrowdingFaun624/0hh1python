@@ -374,7 +374,7 @@ def print_board(tiles:list[int]|str|list[dict[str,int|tuple[int,int]]]) -> None:
 
 if __name__ == "__main__":
     # full, empty, other_data = cProfile.run("generate(14, 99)")
-    full, empty, other_data = generate(4, 99)
+    full, empty, other_data = generate(4, 2)
 
     print("FULL:")
     print_board(full)
