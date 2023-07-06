@@ -110,7 +110,8 @@ def generate(size:int, seed:int=None) -> tuple[list[int],list[int],dict[str,any]
     for i in range(TOTAL_TRIES):
         empty_grid = breakdown(full_grid, size, seed)
         quality = round(count_empty_tiles(empty_grid) / (size ** 2) * 100) # how many empty tiles there are
-        if quality > quality_requirement: break # the more empty tiles, the better. break if it's good enough.
+        break # TEST
+        # if quality > quality_requirement: break # the more empty tiles, the better. break if it's good enough.
     other_data = {"seed": seed, "quality": quality}
     random.seed(after_seed)
     return full_grid, empty_grid, other_data
