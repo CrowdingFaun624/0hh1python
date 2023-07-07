@@ -3,7 +3,7 @@ import os
 from statistics import mean, median
 import time
 
-# import Utilities.LevelCreator as LevelCreator
+# import Utilities.LevelCreatorRectangle as LevelCreator
 import Utilities.LevelCreator as LevelCreator
 
 def test_a_lot() -> None:
@@ -33,9 +33,9 @@ def time_test() -> dict[int,dict[str,any]]:
     for size in SIZES:
         all_times:list[int] = []
         for i in range(REPEAT_COUNT[size]):
-            start_time = time.time()
+            start_time = time.perf_counter()
             LevelCreator.generate(size, i)
-            end_time = time.time()
+            end_time = time.perf_counter()
             time_elapsed = end_time - start_time
             all_times.append(time_elapsed)
             percentage = round(i / REPEAT_COUNT[size] * 100)
@@ -46,7 +46,7 @@ def time_test() -> dict[int,dict[str,any]]:
 
 def get_seed_hashes(size:int=4, count:int|None=None, file:str|None=None) -> None:
     if file is not None and os.path.exists(file): raise FileExistsError("Cannot write to existing file!")
-    REPEAT_COUNT = {4: 6487, 6: 869, 8: 183, 10: 52, 12: 18, 14: 8, 16: 2} # will take 2 minutes and 20 seconds
+    REPEAT_COUNT = {4: 11815, 6: 2303, 8: 629, 10: 202, 12: 82, 14: 16, 16: 2} # will take 2 minutes and 40 seconds
     if count is None: count = REPEAT_COUNT[size]
     output:dict[int,int] = {}
     for seed in range(count):
@@ -61,5 +61,5 @@ def get_seed_hashes(size:int=4, count:int|None=None, file:str|None=None) -> None
     print(output)
 
 if __name__ == "__main__":
-    time_test()
-    # get_seed_hashes(4, file="C:/Users/ander/Downloads/0hh1_with_change.json")
+    # time_test()
+    get_seed_hashes(12, file="C:/Users/ander/Downloads/0hh1_without_change.json")
