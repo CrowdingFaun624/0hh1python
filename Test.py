@@ -3,6 +3,7 @@ import os
 from statistics import mean, median
 import time
 
+# import Utilities.LevelCreator as LevelCreator
 import Utilities.LevelCreator as LevelCreator
 
 def test_a_lot() -> None:
@@ -61,3 +62,4 @@ def get_seed_hashes(size:int=4, count:int|None=None, file:str|None=None) -> None
 
 if __name__ == "__main__":
     time_test()
+    # get_seed_hashes(4, file="C:/Users/ander/Downloads/0hh1_with_change.json")

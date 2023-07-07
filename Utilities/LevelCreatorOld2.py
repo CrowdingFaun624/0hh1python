@@ -108,44 +108,41 @@ def generate(size:int, seed:int=None) -> tuple[list[int],list[int],dict[str,any]
     random.seed(after_seed)
     return full_grid, empty_grid, other_data
 
-def get_tile_order(tiles_values:list[int], current_tile_index:int, size:int) -> list[int]:
+def solve(size:int, tiles_values:list[int], current_tile_value:int, current_tile_index:int) -> bool:
+    '''This function goes through all of the tiles, attempting to solve empty ones. If it does and it is the wanted
+    tile, then hurray, return True. If it isn't, check that nothing went wrong and continue. It continues to grow
+    the found tiles until it can finally solve the desired tile.'''
     same_column:list[int] = []
     same_row:list[int] = []
     other_tiles:list[int] = []
     current_tile_pos = get_pos(current_tile_index, size)
     for tile_index in range(len(tiles_values)):
-        if tile_index == current_tile_index: continue
         tile_pos = get_pos(tile_index, size)
+        if tile_pos == current_tile_pos: continue
         if tile_pos[0] == current_tile_pos[0]:
             same_column.append(tile_index) # contains `size` items, including `current_tile`.
         elif tile_pos[1] == current_tile_pos[1]: # since this is elif, it doesn't catch `current_tile` again.
             same_row.append(tile_index) # contains `size - 1` items, excluding `current_tile`.
         else: other_tiles.append(tile_index) # contains all tiles not in the same row or column as `current_tile` (does not include `current_tile`). Contains `(size - 1) ** 2` items.
-    return same_row + same_column + [current_tile_index] + other_tiles # length of `size ** 2 + 1`, duplicate tile is `current_tile`.
-
-def restore_cache(tiles_values:list[int], tiles_cache:list[int]) -> None:
-    for index, tile in enumerate(tiles_cache):
-        if tile != 0: assert tiles_values[index] == 0; tiles_values[index] = tile
-
-def solve(size:int, tiles_values:list[int], current_tile_index:int, dependencies:list[list[int]], tiles_cache:list[int]) -> bool:
-    '''This function goes through all of the tiles, attempting to solve empty ones. If it does and it is the wanted
-    tile, then hurray, return True. If it isn't, continue. It continues to grow the found tiles until it can finally
-    solve the desired tile.'''
-    tile_order = get_tile_order(tiles_values, current_tile_index, size) # the order it solves tiles in. Tiles at beginning are looked at first and more often.
-    assert dependencies[current_tile_index] == [] # TODO: debug
-    restore_cache(tiles_values, tiles_cache)
+    tile_pos = None
+    solve_function_tiles_indexes = same_row + same_column + [current_tile_index] + other_tiles # length of `size ** 2 + 1`, duplicate tile is `current_tile`.
+    # `solve_function_tiles` could theoretically be any ordering of tiles (as long as it contains all of them).
+    # It does it in this order since tiles in the same row or column have a much greater impact on the desired
+    # tile than other tiles.
+    # TODO: make it do some thing where it avoids checking the current tile again if it hasn't found anything yet
     for total_tries in range((size ** 2) * 50): # it can loop around again and continue trying to solve if it fails the first time.
         # this range can theoretically be extended to infinity, since it will break if it can't find any tile at all.
         # It is not necessary to raise for bigger boards (probably), since it scales with the area.
         empty_tile_index = None # the tile that it attempts to solve for to see if the current tile is necessary
-        for tile_index in tile_order: # the index of this resets every time it finds a tile's value, since it breaks.
-            if tiles_values[tile_index] == 0:
-                if breakdown_tile(size, tiles_values, tile_index, dependencies, tiles_cache): # setting of the tile's type occurs in here. Tile's type is set to 0 in `breakdown`
+        for tile_index in solve_function_tiles_indexes: # the index of this resets every time it finds a tile's value, since it breaks.
+            tile_value = tiles_values[tile_index]
+            if tile_value == 0:
+                if breakdown_tile(size, tiles_values, tile_value, tile_index): # setting of the tile's type occurs in here. Tile's type is set to 0 in `breakdown`
                     empty_tile_index = tile_index
                     break
         if empty_tile_index is None: break # occurs if it failed to find any tiles
-        elif tiles_values[current_tile_index] != 0: return True # if the empty tile is the same as the current tile.
-    else: raise RuntimeError("The board expired!")
+        elif current_tile_index == empty_tile_index: return True # if the empty tile is the same as the current tile.
+    else: print("The board expired")
     # NOTE: before it returns, it also activates a function `v()`, which does nothing. It could potentially be reassigned somewhere
     return count_empty_tiles(tiles_values) == 0
     # occurs if the tile is truly impossible to find.
@@ -178,65 +175,53 @@ def grid_is_valid(size:int, tiles_values:list[int]) -> bool: # NOTE: this is no 
             else: already_rows.add(row_string)
     else: return True # deja-vu
 
-def breakdown_tile(size:int, tiles_values:list[int], tile_index:int, dependencies:list[list[int]], tiles_cache:list[int]) -> bool:
+def breakdown_tile(size:int, tiles_values:list[int], tile_value:int, tile_index:int) -> bool:
     '''Sets a tile to its value; returns if it did that. This does not receive the `current_tile`, but instead a (probably)
     different, empty tile determined by the `solve` function.'''
     # NOTE: if you wish to make the produced puzzles harder, modify this function to include additional rules.
-    collection_value, empty_row_pair_with_index, empty_column_pair_with_index = collect(size, tiles_values, tile_index, dependencies, tiles_cache)
+    collection_value, empty_row_pair_with_index, empty_column_pair_with_index = collect(size, tiles_values, tile_value, tile_index)
     if collection_value is not None:
         tiles_values[tile_index] = collection_value
         return True
     # this really should not give a KeyError due to unboundedness. if so, please scream
-    elif empty_column_pair_with_index is not None and see_if_it_has_a_clone(tiles_values, tile_index, empty_column_pair_with_index, size, dependencies, tiles_cache):
+    elif empty_column_pair_with_index is not None and see_if_it_has_a_clone(tiles_values, tile_index, empty_column_pair_with_index, size):
         # thankfully most of the code that would be here is avoided since hints are not included in this
         return True
-    elif empty_row_pair_with_index is not None and see_if_it_has_a_clone(tiles_values, tile_index, empty_row_pair_with_index, size, dependencies, tiles_cache):
+    elif empty_row_pair_with_index is not None and see_if_it_has_a_clone(tiles_values, tile_index, empty_row_pair_with_index, size):
         return True
     else:
         return False
 
-def see_if_it_has_a_clone(tiles_values:list[int], tile_index:int, other_tile_index:int, size:int, dependencies:list[list[int]], tiles_cache:list[int]) -> bool:
+def see_if_it_has_a_clone(tiles_values:list[int], tile_index:int, other_tile_index:int, size:int) -> bool:
     '''Parameters are the two tiles that make up the missing part of a line while attempting to find a clone.
     It sets the values to their possible values, and checks if it duplicates another line. If it does,
     then it sets the first given tile to its only possible value, and leaves the other one empty.'''
     for value, other_value in ((1, 2), (2, 1)):
         tiles_values[tile_index] = value
         tiles_values[other_tile_index] = other_value
-        index_carrier:list[int] = [] # will contain the indexes of the cloned row/column after row_or_column_is_cloning
-        if row_or_column_is_cloning(tiles_values, tile_index, other_tile_index, size, index_carrier):
-            dependencies_copy = index_carrier
-            assert dependencies[tile_index] == []
-            assert dependencies[other_tile_index] == []
-            dependencies[tile_index] = dependencies_copy
-            dependencies[other_tile_index] = dependencies_copy[:]
-            tiles_cache[tile_index] = other_value
-            tiles_cache[other_tile_index] = value
+        if row_or_column_is_cloning(tiles_values, tile_index, other_tile_index, size):
             tiles_values[tile_index] = other_value
             tiles_values[other_tile_index] = value
             return True # in javascript it returns 1, not true
     else:
-        tiles_values[tile_index] = 0 # reset
+        tiles_values[tile_index] = 0
         tiles_values[other_tile_index] = 0
         return False
 
-def row_or_column_is_cloning(tiles_values:list[int], tile_index:int, other_tile_index:int, size:int, index_carrier:list[int]|None=None) -> bool:
+def row_or_column_is_cloning(tiles_values:list[int], tile_index:int, other_tile_index:int, size:int) -> bool:
     tile_pos = get_pos(tile_index, size); other_tile_pos = get_pos(other_tile_index, size)
     is_row = tile_pos[0] != other_tile_pos[0] # if their x-positions are the same, it is a column
     this_index = tile_pos[int(is_row)]
-    this_row_or_column_indexes = get_row(this_index, size) if is_row else get_column(this_index, size)
-    this_row_or_column_values = get_values(tiles_values, this_row_or_column_indexes)
+    row_or_column_indexes = get_row(this_index, size) if is_row else get_column(this_index, size)
+    this_row_or_column_values = get_values(tiles_values, row_or_column_indexes)
     for index in range(size): # FIXME: this might have bug of checking even rows that aren't full.
         if index == this_index: continue
         row_or_column_indexes = get_row(index, size) if is_row else get_column(index, size)
         row_or_column_values = get_values(tiles_values, row_or_column_indexes)
-        if this_row_or_column_values == row_or_column_values:
-            if index_carrier is not None:
-                index_carrier.extend(row_or_column_indexes)
-                index_carrier.extend(this_row_or_column_indexes)
-            return True
+        if this_row_or_column_values == row_or_column_values: return True
     else: return False
 
-def collect(size:int, tiles_values:list[int], tile_index:int, dependencies:list[list[int]], tiles_cache:list[int]) -> tuple[int|None,int|None,int|None]:
+def collect(size:int, tiles_values:list[int], tile_value:int, tile_index:int) -> tuple[int|None,int|None,int|None]:
     '''The possible tile value based on rules for removing during breakdown, for reasons such as cap-at-two-in-a-row, between, or others. Also returns the
     empty_row_pair_with and empty_column_pair_with's indexes'''
     DIRECTIONS = [(-1, 0), (1, 0), (0, 1), (0, -1)]
@@ -248,25 +233,16 @@ def collect(size:int, tiles_values:list[int], tile_index:int, dependencies:list[
             tile_in_direction2 = get_tile_in_direction(tile_in_direction1, direction, size)
             if tile_in_direction2 is None: continue
             if tiles_values[tile_in_direction1] == test_value1 and tiles_values[tile_in_direction2] == test_value1:
-                assert dependencies[tile_index] == [] # TODO: remove after finished debugging this
-                dependencies[tile_index] = [tile_in_direction1, tile_in_direction2]
-                tiles_cache[tile_index] = test_value2
                 return test_value2, None, None
         left_tile = get_tile_in_direction(tile_index, DIRECTIONS[0], size)
         if left_tile is not None:
             right_tile = get_tile_in_direction(tile_index, DIRECTIONS[1], size)
             if right_tile is not None and tiles_values[left_tile] == test_value1 and tiles_values[right_tile] == test_value1:
-                assert dependencies[tile_index] == [] # TODO: remove after finished debugging this
-                dependencies[tile_index] = [left_tile, right_tile]
-                tiles_cache[tile_index] = test_value2
                 return test_value2, None, None
         up_tile = get_tile_in_direction(tile_index, DIRECTIONS[3], size)
         if up_tile is not None:
             down_tile = get_tile_in_direction(tile_index, DIRECTIONS[2], size)
             if down_tile is not None and tiles_values[up_tile] == test_value1 and tiles_values[down_tile] == test_value1:
-                assert dependencies[tile_index] == [] # TODO: remove after finished debugging this
-                dependencies[tile_index] = [up_tile, down_tile]
-                tiles_cache[tile_index] = test_value2
                 return test_value2, None, None
    
     tile_pos = get_pos(tile_index, size)
@@ -276,16 +252,8 @@ def collect(size:int, tiles_values:list[int], tile_index:int, dependencies:list[
     row_indexes = get_row(tile_pos[1], size)
     row_values = get_values(tiles_values, row_indexes)
     if row_values.count(1) >= max_per_row:
-        assert dependencies[tile_index] == [] # TODO: remove after finished debugging this
-        for row_tile_index in row_indexes:
-            if tiles_values[row_tile_index] == 1: dependencies[tile_index].append(row_tile_index)
-        tiles_cache[tile_index] = 2
-        return 2, None, None # TODO: IMPORTANT: force additional tiles to have their positions known.
+        return 2, None, None
     elif row_values.count(2) >= max_per_row:
-        assert dependencies[tile_index] == [] # TODO: remove after finished debugging this
-        for row_tile_index in row_indexes:
-            if tiles_values[row_tile_index] == 2: dependencies[tile_index].append(row_tile_index)
-        tiles_cache[tile_index] = 1
         return 1, None, None
     elif row_values.count(0) == 2: # this is used for if it fails to find one possible value for the tile.
         for index, row_tile_index in enumerate(row_indexes):
@@ -296,16 +264,8 @@ def collect(size:int, tiles_values:list[int], tile_index:int, dependencies:list[
     column_indexes = get_column(tile_pos[0], size)
     column_values:list[int] = get_values(tiles_values, column_indexes) # vscode is very silly
     if column_values.count(1) >= max_per_column:
-        assert dependencies[tile_index] == [] # TODO: remove after finished debugging this
-        for column_tile_index in column_indexes:
-            if tiles_values[column_tile_index] == 1: dependencies[tile_index].append(column_tile_index)
-        tiles_cache[tile_index] = 2
-        return 2, empty_column_pair_with, None
+        return 2, empty_row_pair_with, None
     elif column_values.count(2) >= max_per_column:
-        assert dependencies[tile_index] == [] # TODO: remove after finished debugging this
-        for column_tile_index in column_indexes:
-            if tiles_values[column_tile_index] == 2: dependencies[tile_index].append(column_tile_index)
-        tiles_cache[tile_index] = 1
         return 1, empty_row_pair_with, None
     elif column_values.count(0) == 2:
         for index, column_tile_index in enumerate(column_indexes):
@@ -336,23 +296,6 @@ def get_pos(index:int, size:int) -> tuple[int,int]:
 def get_index(pos:tuple[int,int], size:int) -> int:
     return (pos[0] + pos[1] * size)
 
-def strip_dependencies(dependencies:list[list[int]], tiles:list[int], tile_index:int, tiles_cache:list[int]) -> None:
-    '''Removes tiles related to the given tile and resets their dependencies'''
-    affected_tiles = set([tile_index])
-    while True:
-        before_length = len(affected_tiles)
-        new_tiles:set[int] = set()
-        for affected_tile in affected_tiles:
-            for tile, tile_dependencies in enumerate(dependencies):
-                if affected_tile in tile_dependencies: new_tiles.add(tile)
-        affected_tiles = affected_tiles | new_tiles
-        if len(affected_tiles) == before_length: break
-    # print(dependencies, tiles, tile_index, affected_tiles, sep="\n")
-    for affected_tile in affected_tiles:
-        dependencies[affected_tile] = []
-        tiles_cache[affected_tile] = 0
-        # tiles[affected_tile] = 0
-
 def breakdown(tiles:list[int], size:int, seed:int, quality_requirement:int|None=None) -> list[int]:
     '''Removes tiles from the board so it's an actual puzzle.
     basically how this works is that it picks a random tile from the board,
@@ -378,23 +321,18 @@ def breakdown(tiles:list[int], size:int, seed:int, quality_requirement:int|None=
     # clearly not necessary to the completion of the board exist on larger sizes.
     # If this is removed, the quality stuff may be removed, too. If larger board
     # sizes are created, the value should be raised above 6.'''
-    dependencies:list[list[int]] = [[] for i in range(size ** 2)] # this is a thing I'm making
-     # for optimization. It tracks the tiles a tile is dependent on to be solved.
-    tiles_cache:list[int] = [0] * size ** 2
     for tile_index in random_range:
         if since_last_success >= 6:
             if quality_requirement is None: break
             elif round(count_empty_tiles(tiles) / (size ** 2) * 100) > quality_requirement: break
         tile_value = tiles[tile_index]
         tiles[tile_index] = 0
-        strip_dependencies(dependencies, tiles, tile_index, tiles_cache)
 
         current_state = tiles.copy()
-        was_successful = solve(size, tiles, tile_index, dependencies, tiles_cache)
+        was_successful = solve(size, tiles, tile_value, tile_index)
         tiles = current_state
 
-        # print(tile_index, tiles_cache, was_successful, dependencies)
-        if was_successful: tiles[tile_index] = 0; since_last_success = 0; assert tiles_cache[tile_index] == tile_value
+        if was_successful: since_last_success = 0
         else: tiles[tile_index] = tile_value; since_last_success += 1 # resets the tile's value in case it cannot be extrapolated from current board
         # print_board(tiles)
     # The reason that you can just solve for the current tile instead of the whole board
