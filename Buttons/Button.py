@@ -3,7 +3,7 @@ import pygame
 import Drawable
 
 class Button(Drawable.Drawable):
-    def __init__(self, surface:pygame.Surface, left_click_action:tuple[any,list[any],dict[str,any]]=None, right_click_action:tuple[any,list[any],dict[str,any]]=None) -> None:
+    def __init__(self, surface:pygame.Surface=None, left_click_action:tuple[any,list[any],dict[str,any]]=None, right_click_action:tuple[any,list[any],dict[str,any]]=None) -> None:
         if left_click_action is not None:
             self.left_click_action = left_click_action[0]
             self.left_click_args = left_click_action[1] if len(left_click_action) >= 2 else []
