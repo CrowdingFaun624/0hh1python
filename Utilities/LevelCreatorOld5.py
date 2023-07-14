@@ -196,11 +196,12 @@ def restore_cache(tiles_values:list[list[int]], tiles_cache:list[list[int]], col
     for index, tile in enumerate(tiles_cache):
         if tile != DEFAULT: tiles_values[index] = tile[:]
 
-def solve(size:tuple[int,int], tiles_values:list[list[int]], current_tile_index:int, dependencies:list[list[int]], colors:int) -> bool:
+def solve(size:tuple[int,int], tiles_values:list[list[int]], current_tile_index:int, dependencies:list[list[int]], tiles_cache:list[list[int]], colors:int) -> bool:
     '''This function goes through all of the tiles, attempting to solve empty ones. If it does and it is the wanted
     tile, then hurray, return True. If it isn't, continue. It continues to grow the found tiles until it can finally
     solve the desired tile.'''
     tile_order = get_tile_order(current_tile_index, size, colors) # the order it solves tiles in. Tiles at beginning are looked at first and more often.
+    restore_cache(tiles_values, tiles_cache, colors)
     previous_tile = None
     for total_tries in range(size[0] * size[1] * 50): # it can loop around again and continue trying to solve if it fails the first time.
         # this range can theoretically be extended to infinity, since it will break if it can't find any tile at all.
@@ -208,7 +209,7 @@ def solve(size:tuple[int,int], tiles_values:list[list[int]], current_tile_index:
         was_successful = False
         for tile_index in tile_order: # the index of this resets every time it finds a tile's value, since it breaks.
             if len(tiles_values[tile_index]) != 1 and previous_tile != tile_index:
-                if breakdown_tile(size, tiles_values, tile_index, dependencies, colors): # setting of the tile's type occurs in here. Tile's type is set to default in `breakdown`
+                if breakdown_tile(size, tiles_values, tile_index, dependencies, tiles_cache, colors): # setting of the tile's type occurs in here. Tile's type is set to default in `breakdown`
                     was_successful = True
                     previous_tile = tile_index
                     break
@@ -258,20 +259,20 @@ def grid_is_valid(size:tuple[int,int], tiles_values:list[list[int]], colors:int=
             else: already_rows.add(row_string)
     else: return True
 
-def breakdown_tile(size:tuple[int,int], tiles_values:list[list[int]], tile_index:int, dependencies:list[list[int]], colors:int=2) -> bool:
+def breakdown_tile(size:tuple[int,int], tiles_values:list[list[int]], tile_index:int, dependencies:list[list[int]], tiles_cache:list[list[int]], colors:int=2) -> bool:
     '''Sets a tile to its value; returns if it did that. This does not receive the `current_tile`, but instead a (probably)
     different, empty tile determined by the `solve` function.'''
     # NOTE: if you wish to make the produced puzzles harder, modify this function to include additional rules.
     was_successful = False
-    collection_success, empty_row_pair_with_index, empty_column_pair_with_index = collect(size, tiles_values, tile_index, dependencies, colors)
+    collection_success, empty_row_pair_with_index, empty_column_pair_with_index = collect(size, tiles_values, tile_index, dependencies, tiles_cache, colors)
     if collection_success: was_successful = True
-    if empty_column_pair_with_index is not None and len(tiles_values[tile_index]) != 1 and see_if_it_has_a_clone(tiles_values, tile_index, empty_column_pair_with_index, size, dependencies, colors):
+    if empty_column_pair_with_index is not None and len(tiles_values[tile_index]) != 1 and see_if_it_has_a_clone(tiles_values, tile_index, empty_column_pair_with_index, size, dependencies, tiles_cache, colors):
         was_successful = True
-    if empty_row_pair_with_index is not None and len(tiles_values[tile_index]) != 1 and see_if_it_has_a_clone(tiles_values, tile_index, empty_row_pair_with_index, size, dependencies, colors):
+    if empty_row_pair_with_index is not None and len(tiles_values[tile_index]) != 1 and see_if_it_has_a_clone(tiles_values, tile_index, empty_row_pair_with_index, size, dependencies, tiles_cache, colors):
         was_successful = True
     return was_successful
 
-def see_if_it_has_a_clone(tiles_values:list[list[int]], tile_index:int, other_tile_index:int, size:tuple[int,int], dependencies:list[list[int]], colors:int) -> bool:
+def see_if_it_has_a_clone(tiles_values:list[list[int]], tile_index:int, other_tile_index:int, size:tuple[int,int], dependencies:list[list[int]], tiles_cache:list[list[int]], colors:int) -> bool:
     '''Parameters are the two tiles that make up the missing part of a line while attempting to find a clone.
     It sets the values to their possible values, and checks if it duplicates another line. If it does,
     then it sets the first given tile to its only possible value, and leaves the other one empty.'''
@@ -301,6 +302,8 @@ def see_if_it_has_a_clone(tiles_values:list[list[int]], tile_index:int, other_ti
                 dependencies_copy = index_carrier
                 dependencies[tile_index] = dependencies_copy
                 dependencies[other_tile_index] = dependencies_copy[:]
+                rule_out_value(tiles_cache[tile_index], value)
+                rule_out_value(tiles_cache[other_tile_index], other_value)
                 rule_out_value(tiles_values[tile_index], value)
                 rule_out_value(tiles_values[other_tile_index], other_value)
                 return True
@@ -330,7 +333,7 @@ def rule_out_value(tile:list[int], value:int) -> None:
     # if value in tile: tile.remove(value)
     tile.remove(value)
 
-def collect(size:tuple[int,int], tiles_values:list[list[int]], tile_index:int, dependencies:list[list[int]], colors:int) -> tuple[bool, int|None,int|None]:
+def collect(size:tuple[int,int], tiles_values:list[list[int]], tile_index:int, dependencies:list[list[int]], tiles_cache:list[list[int]], colors:int) -> tuple[bool, int|None,int|None]:
     '''The possible tile value based on rules for removing during breakdown, for reasons such as cap-at-two-in-a-row, between, or others. Also returns the
     empty_row_pair_with and empty_column_pair_with's indexes'''
     DIRECTIONS = [(-1, 0), (1, 0), (0, 1), (0, -1)]
@@ -347,18 +350,21 @@ def collect(size:tuple[int,int], tiles_values:list[list[int]], tile_index:int, d
         for testing_value in tiles_values[tile_index][:]:
             if tiles_values[tile_in_direction1] == [testing_value] and tiles_values[tile_in_direction2] == [testing_value]:
                 dependencies[tile_index].extend([tile_in_direction1, tile_in_direction2])
+                rule_out_value(tiles_cache[tile_index], testing_value)
                 rule_out_value(tiles_values[tile_index], testing_value)
                 did_something = True
     left_tile, right_tile, down_tile, up_tile = directional_tiles
     for testing_value in tiles_values[tile_index][:]:
         if left_tile is not None and right_tile is not None and tiles_values[left_tile] == [testing_value] and tiles_values[right_tile] == [testing_value]:
             dependencies[tile_index].extend([left_tile, right_tile])
+            rule_out_value(tiles_cache[tile_index], testing_value)
             rule_out_value(tiles_values[tile_index], testing_value)
             did_something = True
             if colors == 2: break
             continue
         if down_tile is not None and up_tile is not None and tiles_values[down_tile] == [testing_value] and tiles_values[up_tile] == [testing_value]:
             dependencies[tile_index].extend([up_tile, down_tile])
+            rule_out_value(tiles_cache[tile_index], testing_value)
             rule_out_value(tiles_values[tile_index], testing_value)
             did_something = True
             if colors == 2: break
@@ -377,6 +383,7 @@ def collect(size:tuple[int,int], tiles_values:list[list[int]], tile_index:int, d
         for index in index_list:
             if value not in tiles_values[index] or len(tiles_values[index]) == 1: continue # NOTE: I am having a brain fart with this and this line may be wrong. Original is if it's not empty
             dependencies[index].extend(dependency)
+            rule_out_value(tiles_cache[index], value)
             rule_out_value(tiles_values[index], value)
             was_successful = True
         return was_successful
@@ -387,6 +394,7 @@ def collect(size:tuple[int,int], tiles_values:list[list[int]], tile_index:int, d
         for index in index_list:
             if len(tiles_values[index]) > 1 and value in tiles_values[index]:
                 dependencies[index].extend(dependency)
+                tiles_cache[index] = [value]
                 tiles_values[index] = [value]
                 was_successful = True
         return was_successful
@@ -517,9 +525,8 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, qual
         strip_dependencies(dependencies, tiles, tile_index, tiles_cache, colors)
 
         current_state = copy_tiles(tiles)
-        restore_cache(tiles, tiles_cache, colors)
-        was_successful = solve(size, tiles, tile_index, dependencies, colors)
-        tiles_cache = tiles
+        was_successful = solve(size, tiles, tile_index, dependencies, tiles_cache, colors)
+        # tiles_cache = tiles
         tiles = current_state
 
         if was_successful: tiles[tile_index] = DEFAULT[:]; since_last_success = 0
