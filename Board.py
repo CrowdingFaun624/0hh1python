@@ -20,20 +20,9 @@ class Board(Drawable.Drawable):
         else:self.seed = seed
         self.size = size
         self.colors = colors
-        if self.colors == 2:
-            self.__click_times = [0] * (size[0] * size[1])
-            self.__click_times_sections = [None] * (size[0] * size[1])
-            self.__mouse_over_times = [0] * (size[0] * size[1])
-            self.__click_types = [None] * (size[0] * size[1])
-            self.__previous_tiles = [None] * (size[0] * size[1]) # keeps track of a tile's previous value
-        else:
-            DEFAULT = list(range(1, self.colors + 1))
-            self.__click_times = [0] * (size[0] * size[1])
-            self.__click_times_sections = [[0] * self.colors for i in range(size[0] * size[1])]
-            self.__mouse_over_times = [0] * (size[0] * size[1])
-            self.__click_types = [None] * (size[0] * size[1])
-            self.__previous_tiles = [DEFAULT[:]] * (size[0] * size[1]) # keeps track of a tile's previous value
+        self.__current_mouse_over:int = None
         self.get_board_from_seed()
+        self.init_tiles()
         self.is_complete = False # used for locking all of the tiles
 
     def get_board_from_seed(self) -> list[int]:
@@ -44,24 +33,32 @@ class Board(Drawable.Drawable):
             DEFAULT = list(range(1, self.colors + 1))
             self.player_board = [(DEFAULT[:] if value == 0 else [value]) for value in self.empty_board]
 
+    def init_tiles(self) -> None:
+        self.tiles:list[Tile.Tile] = []
+        current_time = time.time()
+        for index in range(self.size[0] * self.size[1]):
+            x = index % self.size[0]
+            y = index // self.size[0]
+            is_even = (x + y) % 2 == 1
+            if self.tile_is_empty(self.empty_board[index]):
+                start_progress = 0.0
+                is_locked = False
+            else:
+                start_progress = 1.0
+                is_locked = True
+            self.tiles.append(Tile.Tile(index, self.display_size, self.player_board[index], is_even, self.colors, current_time, start_progress, is_locked))
+
     def display(self, ticks:int) -> pygame.Surface:
         padding_amount = self.display_size * 0.04
         surface = pygame.Surface((self.display_size * self.size[0] + padding_amount, self.display_size * self.size[1] + padding_amount), pygame.SRCALPHA)
-        board_data = {"colors": self.colors}
-        for y in range(self.size[1]):
-            for x in range(self.size[0]):
-                index = x + y * self.size[0]
-                is_even = (x + y) % 2 == 1
-                tile_data = {
-                    "click_time": self.__click_times[index],
-                    "click_time_sections": self.__click_times_sections[index],
-                    "mouse_over_time": self.__mouse_over_times[index],
-                    "click_type": self.__click_types[index],
-                    "previous_tile": self.__previous_tiles[index],
-                    "locked": self.empty_board[index] != 0}
-                # print(index)
-                tile = Tile.Tile(self.display_size, self.player_board[index], is_even)
-                surface.blit(tile.new_surface(ticks, time.time(), tile_data, board_data), (x*self.display_size, y*self.display_size))
+        current_time = time.time()
+        for index in range(self.size[0] * self.size[1]):
+            x = index % self.size[0]
+            y = index // self.size[0]
+            tile_surface_requirements = self.tiles[index].tick(current_time)
+            tile_surface = self.tiles[index].display(tile_surface_requirements, current_time)
+            self.tiles[index].last_tick_time = current_time
+            surface.blit(tile_surface, (x*self.display_size, y*self.display_size))
         return surface
 
     def tile_is_empty(self, tile) -> bool:
@@ -69,11 +66,13 @@ class Board(Drawable.Drawable):
         elif isinstance(tile, list): return len(tile) == self.colors
 
     def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> None:
-        def get_relative_mouse_position() -> tuple[float,float]:
-            return event.__dict__["pos"][0] - screen_position[0], event.__dict__["pos"][1] - screen_position[1]
-        def get_index() -> int|None:
+        def get_relative_mouse_position(position:tuple[float,float]|None=None) -> tuple[float,float]:
+            if position is None: position = event.__dict__["pos"]
+            return position[0] - screen_position[0], position[1] - screen_position[1]
+        def get_index(position:tuple[float,float]|None=None) -> int|None:
             '''Gets the index of the tile the mouse is over'''
-            position = get_relative_mouse_position()
+            if position is None: position = event.__dict__["pos"]
+            position = get_relative_mouse_position(position)
             if position[0] > self.display_size * self.size[0] or position[0] < 0: return None
             elif position[1] > self.display_size * self.size[1] or position[1] < 0: return None
             x = int(position[0] // self.display_size)
@@ -86,20 +85,21 @@ class Board(Drawable.Drawable):
             if event.__dict__["button"] not in up_values: return
             index = get_index()
             if index is None: return
-            self.__click_times[index] = time.time() 
+            self.tiles[index].click_time = time.time()
             if not self.tile_is_empty(self.empty_board[index]) or self.is_complete: # if it is a locked tile
-                self.__click_types[index] = CLICK_ACTION_LOCKED
+                self.tiles[index].click_type = CLICK_ACTION_LOCKED
                 return
-            else: self.__click_types[index] = CLICK_ACTION_SUCCESS
+            else: self.tiles[index].click_type = CLICK_ACTION_SUCCESS
             if self.colors == 2:
                 current_value = self.player_board[index]
-                self.__previous_tiles[index] = current_value
+                self.tiles[index].previous_value = current_value
                 current_value += up_values[event.__dict__["button"]]
                 current_value = current_value % (self.colors + 1)
                 self.player_board[index] = current_value
+                self.tiles[index].value = current_value
                 if 0 not in self.player_board: self.is_complete = True
             else:
-                self.__previous_tiles[index] = self.player_board[index][:]
+                self.tiles[index].previous_value = self.player_board[index][:]
                 x, y = get_relative_mouse_position()
                 tile_x = index % self.size[0]; tile_y = index // self.size[0]
                 center_x = (tile_x + 0.5) * self.display_size + screen_position[0]
@@ -113,30 +113,49 @@ class Board(Drawable.Drawable):
                         self.player_board[index].append(section)
                         self.player_board[index].sort() # so it is recognized correctly as DEFAULT
                     if self.tile_is_empty(self.empty_board[index]):
-                        print("asdfasdf")
-                        self.__click_times_sections[index][section - 1] = time.time()
+                        self.tiles[index].click_time_sections[section - 1] = time.time()
                 else:
                     if section not in self.player_board[index]:
                         self.player_board[index].append(section)
-                        self.__click_times_sections[index][section - 1] = time.time()
-                    # print("yeet")
+                        self.tiles[index].click_time_sections[section - 1] = time.time()
                     for color in range(self.colors):
-                        # print(color, color + 1, self.player_board[index])
                         if color == section - 1: continue
                         if color + 1 in self.player_board[index]:
                             self.player_board[index].remove(color + 1)
-                            self.__click_times_sections[index][color] = time.time()
-                # print(self.player_board[index])
+                            self.tiles[index].click_time_sections[color] = time.time()
                 if False not in [len(tile) == 1 for tile in self.player_board]: self.is_complete = True
 
+        # def mouse_over() -> None:
+        #     index = get_index(pygame.mouse.get_pos())
+        #     if index is None: return
         def mouse_motion() -> None:
             index = get_index()
-            if index is None: return
-            self.__mouse_over_times[index] = time.time()
+            if index is None:
+                if self.__current_mouse_over is not None:
+                    self.tiles[self.__current_mouse_over].is_mousing_over = False
+                    self.__current_mouse_over = None
+                return
+            if index != self.__current_mouse_over:
+                
+                if self.__current_mouse_over is not None:
+                    self.tiles[self.__current_mouse_over].mouse_over_time = time.time()
+                    self.tiles[self.__current_mouse_over].is_mousing_over = False
+                self.tiles[index].mouse_over_start = time.time() # NOTE: it might be worth considering setting the previous one back to 0
+                self.tiles[index].is_mousing_over = True
+            self.__current_mouse_over = index
+        def mouse_leave() -> None:
+            if self.__current_mouse_over is not None:
+                self.tiles[self.__current_mouse_over].is_mousing_over = False
+            self.__current_mouse_over = None
         
         TYPES = {
             pygame.MOUSEBUTTONDOWN: mouse_button_down,
             pygame.MOUSEMOTION: mouse_motion
         }
         for event in events:
-            if event.type in TYPES: TYPES[event.type]()
+            match event.type:
+                case pygame.MOUSEBUTTONDOWN: mouse_button_down()
+                case pygame.MOUSEMOTION: mouse_motion()
+                case pygame.WINDOWLEAVE: mouse_leave()
+            # if event.type in TYPES: TYPES[event.type]()
+        # mouse_over()
