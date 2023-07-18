@@ -4,6 +4,13 @@ import os
 import random
 import re
 
+try:
+    import Utilities.LevelPrinter as LevelPrinter
+    import Utilities.LevelSolver as LevelSolver
+except ImportError:
+    import LevelPrinter
+    import LevelSolver
+
 def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[int]:
     # wave collapse algorithm I think
     def get_tile(x:int, y:int) -> int:
@@ -27,8 +34,6 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
         if y in wave_collapse_storage and wave_collapse_storage[y] is not None:
             valid_rows.append(wave_collapse_storage[y])
             wave_collapse_storage[y] = None
-    # def get_row(y_position:int) -> str:
-    #     return "".join([str(i) for i in tiles[y_position * size[0]:(y_position + 1) * size[0]]])
     def get_column(x_position:int) -> str:
         return "".join([str(i) for i in tiles[x_position::size[0]]])
     def is_full(row_or_column:str) -> bool:
@@ -40,12 +45,6 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
             if row.count(str(color)) > max_per_row: return True
         if bool(three_in_a_row_regular_expression_base_0.search(row)): return True
         return False
-    # def is_invalid_base_1_row(row:str) -> bool:
-    #     '''Detects the invalidity of a row or column if empty is 0, red is 1, and blue is 2'''
-    #     for color in range(1, colors + 1):
-    #         if row.count(str(color)) > max_per_row: return True
-    #     if bool(three_in_a_row_regular_expression_base_1.search(row)): return True
-    #     return False
     def is_invalid_base_1(column:str) -> bool:
         '''Detects the invalidity of a row or column if empty is 0, red is 1, and blue is 2'''
         for color in range(1, colors + 1):
@@ -113,7 +112,7 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
         if volume <= 392:
             this_state = "".join(valid_rows[:6]) + ",".join([str(i) for i in row_tries])
             if this_state in previous_states: random.shuffle(valid_rows) # protection against stalling
-            previous_states.add(this_state)
+            previous_states.add(this_state) # TODO: this wonky state stuff may be able to be replaced with the row_tries stuff.
         # print(seed, size, this_state, wave_collapse_storage, output_rows, row_tries, y_position, valid_rows[-1])
 
         row_tries[y_position] += 1
@@ -266,9 +265,9 @@ def breakdown_tile(size:tuple[int,int], tiles_values:list[list[int]], tile_index
     collection_success, empty_row_pair_with_index, empty_column_pair_with_index = collect(size, tiles_values, tile_index, dependencies, colors)
     if collection_success: was_successful = True
     if empty_column_pair_with_index is not None and len(tiles_values[tile_index]) != 1 and see_if_it_has_a_clone(tiles_values, tile_index, empty_column_pair_with_index, size, dependencies, colors):
-        was_successful = True
+        was_successful = True # TODO: check for len(tiles_values[empty_column_pair_with_index]) too
     if empty_row_pair_with_index is not None and len(tiles_values[tile_index]) != 1 and see_if_it_has_a_clone(tiles_values, tile_index, empty_row_pair_with_index, size, dependencies, colors):
-        was_successful = True
+        was_successful = True # TODO: check for len(tiles_values[empty_column_pair_with_index]) too
     return was_successful
 
 def see_if_it_has_a_clone(tiles_values:list[list[int]], tile_index:int, other_tile_index:int, size:tuple[int,int], dependencies:list[list[int]], colors:int) -> bool:
@@ -282,15 +281,15 @@ def see_if_it_has_a_clone(tiles_values:list[list[int]], tile_index:int, other_ti
     is_row = tile_pos[0] != other_tile_pos[0] # if their x-positions are the same, it is a column
     this_index = tile_pos[int(is_row)]
     this_row_or_column_indexes = get_row(this_index, size) if is_row else get_column(this_index, size)
-    this_row_or_column_values = get_values(tiles_values, this_row_or_column_indexes)
+    this_row_or_column_values = get_values(tiles_values, this_row_or_column_indexes) # TODO: this isn't even used.
     max_per_row_or_column = size[int(is_row)] // colors
     for value in DEFAULT:
         if value not in tiles_values[tile_index]: continue
-        if this_row_or_column_values.count([value]) >= max_per_row_or_column: continue
+        # if this_row_or_column_values.count([value]) >= max_per_row_or_column: continue
         for other_value in DEFAULT:
             if value == other_value: continue
             if other_value not in tiles_values[other_tile_index]: continue
-            if this_row_or_column_values.count([value]) >= max_per_row_or_column: continue
+            # if this_row_or_column_values.count([value]) >= max_per_row_or_column: continue
             # print(value, other_value, tiles_values[tile_index], tiles_values[other_tile_index], tile_index, other_tile_index)
             temp_tile = tiles_values[tile_index][:]; temp_other_tile = tiles_values[other_tile_index][:]
             tiles_values[tile_index] = [value]; tiles_values[other_tile_index] = [other_value]
@@ -299,8 +298,8 @@ def see_if_it_has_a_clone(tiles_values:list[list[int]], tile_index:int, other_ti
             tiles_values[tile_index] = temp_tile; tiles_values[other_tile_index] = temp_other_tile
             if is_cloning:
                 dependencies_copy = index_carrier
-                dependencies[tile_index] = dependencies_copy
-                dependencies[other_tile_index] = dependencies_copy[:]
+                dependencies[tile_index].extend(dependencies_copy) # TODO: make it extend instead
+                dependencies[other_tile_index].extend(dependencies_copy)
                 rule_out_value(tiles_values[tile_index], value)
                 rule_out_value(tiles_values[other_tile_index], other_value)
                 return True
@@ -348,7 +347,7 @@ def collect(size:tuple[int,int], tiles_values:list[list[int]], tile_index:int, d
             if tiles_values[tile_in_direction1] == [testing_value] and tiles_values[tile_in_direction2] == [testing_value]:
                 dependencies[tile_index].extend([tile_in_direction1, tile_in_direction2])
                 rule_out_value(tiles_values[tile_index], testing_value)
-                did_something = True
+                did_something = True # TODO: add break
     left_tile, right_tile, down_tile, up_tile = directional_tiles
     for testing_value in tiles_values[tile_index][:]:
         if left_tile is not None and right_tile is not None and tiles_values[left_tile] == [testing_value] and tiles_values[right_tile] == [testing_value]:
@@ -406,7 +405,7 @@ def collect(size:tuple[int,int], tiles_values:list[list[int]], tile_index:int, d
             if row_values_counts_empty[color - 1] + row_values_counts[color - 1] == max_per_row:
                 dependency = add_dependencies_rule_5(row_indexes, color)
                 was_successful = apply_dependencies_rule_5(row_indexes, dependency, color)
-                if was_successful: did_something = True
+                if was_successful: did_something = True # TODO: add a break here because it sets the tile's value anyways (and test performance)
     # print(count_unknown_tiles(row_values), row_values)
     if count_unknown_tiles(row_values) == 2: # this is used for cloning
         for index, row_tile_index in enumerate(row_indexes):
@@ -430,7 +429,7 @@ def collect(size:tuple[int,int], tiles_values:list[list[int]], tile_index:int, d
             if column_values_counts_empty[color - 1] + column_values_counts[color - 1] == max_per_column:
                 dependency = add_dependencies_rule_5(column_indexes, color)
                 was_successful = apply_dependencies_rule_5(column_indexes, dependency, color)
-                if was_successful: did_something = True
+                if was_successful: did_something = True # TODO: add a break here because it sets the tile's value anyways (and test performance)
     # print(count_empty_tiles(column_values), column_values)
     if count_unknown_tiles(column_values) == 2:
         for index, column_tile_index in enumerate(column_indexes):
@@ -462,7 +461,7 @@ def get_index(pos:tuple[int,int], size:tuple[int,int]) -> int:
     return (pos[0] + pos[1] * size[0])
 
 def strip_dependencies(dependencies:list[list[int]], tiles:list[int], tile_index:int, tiles_cache:list[list[int]], colors:int) -> None:
-    '''Removes tiles related to the given tile and resets their dependencies'''
+    '''Removes tiles related to the given tile and resets their dependencies''' # TODO: remove the parameter `tiles`
     DEFAULT = list(range(1, colors + 1))
     affected_tiles = set([tile_index])
     while True:
@@ -477,6 +476,15 @@ def strip_dependencies(dependencies:list[list[int]], tiles:list[int], tile_index
         dependencies[affected_tile] = []
         tiles_cache[affected_tile] = DEFAULT[:]
         # tiles[affected_tile] = 0
+
+def collapse_board(tiles:list[list[int]], colors:int=None, strict:bool=False) -> list[int]:
+    output:list[int] = []
+    for tile in tiles:
+        if len(tile) == 0: raise ValueError("0-length tile!")
+        if len(tile) == 1: output.append(tile[0])
+        elif strict and len(tile) < colors: raise ValueError("%s-length tile!" % len(tile))
+        else: output.append(0)
+    return output
 
 def copy_tiles(tiles:list[list[int]]) -> list[list[int]]:
     return [copy_tile[:] for copy_tile in tiles]
@@ -517,14 +525,15 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, qual
         strip_dependencies(dependencies, tiles, tile_index, tiles_cache, colors)
 
         current_state = copy_tiles(tiles)
-        restore_cache(tiles, tiles_cache, colors)
-        was_successful = solve(size, tiles, tile_index, dependencies, colors)
+        restore_cache(tiles, tiles_cache, colors) # TODO: if the board is full except for one after this function; assume it's completable (and measure performance)
+        # was_successful = solve(size, tiles, tile_index, dependencies, colors)
+        was_successful = LevelSolver.solve(size, colors, tiles, tile_index, dependencies)
         tiles_cache = tiles
         tiles = current_state
 
         if was_successful: tiles[tile_index] = DEFAULT[:]; since_last_success = 0
         else: tiles[tile_index] = tile_value; since_last_success += 1 # resets the tile's value in case it cannot be extrapolated from current board
-        # print_board(tiles, size)
+        # LevelPrinter.print_board(tiles, size)
     # The reason that you can just solve for the current tile instead of the whole board
     # when checking if you need the tile is that
     random.seed(after_seed)
@@ -533,36 +542,16 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, qual
         raise RuntimeError("The board is empty!")
     return tiles
 
-def collapse_board(tiles:list[list[int]], colors:int=None, strict:bool=False) -> list[int]:
-    output:list[int] = []
-    for tile in tiles:
-        if len(tile) == 0: raise ValueError("0-length tile!")
-        if len(tile) == 1: output.append(tile[0])
-        elif strict and len(tile) < colors: raise ValueError("%s-length tile!" % len(tile))
-        else: output.append(0)
-    return output
-
-def print_board(tiles:list[int]|list[list[int]]|str, size:tuple[int,int]|int) -> None:
-    if isinstance(size, int): width = size
-    else: width, height = size
-    if isinstance(tiles[0], list): tiles = collapse_board(tiles, strict=False)
-    emojis = {0: "⬛", 1: "🟥", 2: "🟦", 3: "🟨", 4: "🟩", 5: "🟪", 6: "🟧", 7: "🟫", 8: "⬜"}
-    output = ""
-    for index, tile in enumerate(tiles):
-        output += emojis[int(tile)]
-        if index % width == width - 1: output += "\n"
-    print(output)
-
 if __name__ == "__main__":
     os.chdir(os.path.split(os.path.split(__file__)[0])[0])
-    size = 6
-    # full, empty, other_data = cProfile.run("generate(size, 1234, 3)")
-    full, empty, other_data = generate(size, 5, colors=3)
+    size = 12
+    full, empty, other_data = cProfile.run("generate(size, 1234, 2)")
+    # full, empty, other_data = generate(size, 29, colors=3)
 
     print("FULL:")
-    print_board(full, size)
+    LevelPrinter.print_board(full, size)
     print("EMPTY:")
-    print_board(empty, size)
+    LevelPrinter.print_board(empty, size)
 
 # TODO: Create a dedicated solver that can also work with this thing
-# TODO: remove cache. Just copy the tiles in `breakdown` after it's done solving.
+# TODO: generate solution: it may be possible to not generate the entire valid_rows list, but instead a small portion of it. The list may be expanded when it normally reshuffles the list.

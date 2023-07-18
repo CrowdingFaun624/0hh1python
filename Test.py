@@ -5,9 +5,29 @@ from statistics import mean, median
 import time
 
 import Utilities.LevelCreator as LevelCreator
+import Utilities.LevelPrinter as LevelPrinter
+import Utilities.LevelSolver as LevelSolver
 
 REPEAT_COUNT = {2: {4: 11815, 6: 2303, 8: 629, 10: 202, 12: 82, 14: 16, 16: 2},
                 3: {3: 13971, 6: 1251, 9: 142, 12: 2}} # will take 2 minutes and 40 seconds
+
+def copy_tiles(tiles:list[list[int]]) -> list[list[int]]:
+    return [copy_tile[:] for copy_tile in tiles]
+def expand_tiles(tiles:list[int], colors:int) -> list[list[int]]:
+    DEFAULT = list(range(1, colors + 1))
+    return [(DEFAULT[:] if tile == 0 else [tile]) for tile in tiles]
+def collapse_tiles(tiles:list[list[int]], colors:int=None, strict:bool=False) -> list[int]:
+    output:list[int] = []
+    for tile in tiles:
+        if len(tile) == 0: raise ValueError("0-length tile!")
+        if len(tile) == 1: output.append(tile[0])
+        elif strict and len(tile) < colors: raise ValueError("%s-length tile!" % len(tile))
+        else: output.append(0)
+    return output
+def has_incomplete_tiles(tiles:list[list[int]]) -> bool: # TODO: check the performance of this vs `count_complete_tiles`
+    for tile in tiles:
+        if len(tile) != 1: return True
+    else: return False
 
 def test_a_lot() -> None:
     SIZES = [4, 6, 8, 10, 12]
@@ -24,14 +44,23 @@ def test_a_lot() -> None:
         seed = random.randint(-2147483648, 2147483647)
         print(seed, pattern[index])
         full, empty, other_data = LevelCreator.generate(pattern[index], seed)
-        LevelCreator.print_board(full, pattern[index])
-        LevelCreator.print_board(empty, pattern[index])
+        LevelPrinter.print_board(full, pattern[index])
+        LevelPrinter.print_board(empty, pattern[index])
         print(other_data)
         print()
         index += 1
         index = index % pattern_length
 
 def time_test(specified_colors:list[int]|None=None) -> dict[int,dict[str,any]]:
+    def raise_error(message:str) -> None:
+        print("FULL:")
+        LevelPrinter.print_board(full, size)
+        print("EMPTY:")
+        LevelPrinter.print_board(empty, size)
+        print("SOLVED:")
+        LevelPrinter.print_board(solved, size)
+        raise RuntimeError(message)
+
     SIZES = {2: [4, 6, 8, 10, 12, 14, 16], 3: [3, 6, 9, 12]}
     if specified_colors is None: specified_colors = list(SIZES.keys())
     output:dict[int,dict[str,any]] = {}
@@ -39,16 +68,26 @@ def time_test(specified_colors:list[int]|None=None) -> dict[int,dict[str,any]]:
     for colors in specified_colors:
         sizes = SIZES[colors]
         for size in sizes:
-            all_times:list[int] = []
+            all_times_generator:list[int] = []
+            all_times_solver:list[int] = []
             for i in range(REPEAT_COUNT[colors][size]):
                 percentage = round(i / REPEAT_COUNT[colors][size] * 100)
                 print(size, ": ", percentage, "%, seed ", i, sep="")
                 start_time = time.perf_counter()
-                LevelCreator.generate(size, i, colors)
+                full, empty, other_data = LevelCreator.generate(size, i, colors)
                 end_time = time.perf_counter()
                 time_elapsed = end_time - start_time
-                all_times.append(time_elapsed)
-            output[colors][size] = ({"mean": mean(all_times), "median": median(all_times)})
+                all_times_generator.append(time_elapsed)
+                solved = expand_tiles(empty, colors)
+                start_time = time.perf_counter()
+                LevelSolver.solve(size, colors, solved, None, None, True)
+                end_time = time.perf_counter()
+                time_elapsed = end_time - start_time
+                all_times_solver.append(time_elapsed)
+                solved = collapse_tiles(solved, colors, True)
+                if 0 in solved: raise_error("The solved board is incomplete!")
+                elif solved != full: raise_error("The full and solved boards are different!")
+            output[colors][size] = ({"mean_gen": mean(all_times_generator), "median_gen": median(all_times_generator), "mean_sol": mean(all_times_solver), "median_sol": median(all_times_solver)})
     print(output)
     return output
 
