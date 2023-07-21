@@ -7,72 +7,65 @@ import re
 try:
     import Utilities.LevelPrinter as LevelPrinter
     import Utilities.LevelSolver as LevelSolver
-    import Utilities.ExperimentsAndOldStuff.LevelSolverOld as LevelSolverOld
 except ImportError:
     import LevelPrinter
     import LevelSolver
-    import ExperimentsAndOldStuff.LevelSolverOld as LevelSolverOld
 
 def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[int]:
     # wave collapse algorithm I think
     def get_tile(x:int, y:int) -> int:
         return tiles[size[0] * y + x]
-    def set_tile_to(x:int, y:int, value:int) -> None: # TODO: remove this function and replace uses with more efficient versions.
+    def set_tile_to(x:int, y:int, value:int) -> None:
         tiles[size[0] * y + x] = value
     
     def grid_is_valid(is_final:bool) -> bool:
         already_columns:list[str] = []
         for index in range(size[0]):
             column = get_column(index)
-            if is_invalid_list(column): return False
+            if is_invalid_base_1(column): return False
             elif is_final and column in already_columns: return False
             else: already_columns.append(column)
         return True
     
     def clear_row_from_tiles(y:int) -> None:
-        if tiles[y * size[0]] != -1: # if the line already exists, remove it and put it back in valid rows.
-            valid_rows.append(tiles[y * size[0]:(y + 1) * size[0]])
-        # for i in range(y * size[0],(y + 1) * size[0]): tiles[i] = 0
         for x_position in range(size[0]):
-            set_tile_to(x_position, y, -1)
-    def get_column(x_position:int) -> list[int]:
-        return [i for i in tiles[x_position::size[0]]]
-    def is_invalid_string(row:str) -> bool:
+            set_tile_to(x_position, y, 0)
+        # output_rows[y] = None
+        if wave_collapse_storage[y] is not None: # if the line already exists, remove it and put it back in valid rows.
+            valid_rows.append(wave_collapse_storage[y])
+            wave_collapse_storage[y] = None
+    def get_column(x_position:int) -> str:
+        return "".join([str(i) for i in tiles[x_position::size[0]]])
+    def is_invalid_base_0(row:str) -> bool:
         '''Detects the invalidity of a row or column if red is 0 and blue is 1'''
         for color in range(colors):
             if row.count(str(color)) > max_per_row: return True
-        if bool(three_in_a_row_regular_expression.search(row)): return True
+        if bool(three_in_a_row_regular_expression_base_0.search(row)): return True
         return False
-    def is_invalid_list(column:list[int]) -> bool: # TODO: only look for three-in-a-row near the bottom, since that's the only unchecked spot
+    def is_invalid_base_1(column:str) -> bool:
         '''Detects the invalidity of a row or column if empty is 0, red is 1, and blue is 2'''
-        for color in range(colors):
-            if column.count(color) > max_per_column: return True
-        previous_tile1 = None; previous_tile2 = None
-        for current_tile in column:
-            if previous_tile1 is not None and previous_tile2 is not None and previous_tile2 != -1 and previous_tile1 == previous_tile2 == current_tile:
-                return True
-            previous_tile2 = previous_tile1
-            previous_tile1 = current_tile
+        for color in range(1, colors + 1):
+            if column.count(str(color)) > max_per_column: return True
+        if bool(three_in_a_row_regular_expression_base_1.search(column)): return True
         return False
 
-    def get_valid_rows() -> list[list[int]]:
+    def get_valid_rows() -> list[str]:
         if colors ** size[0] >= 4096:
             cached_data = fetch_cache()
             if cached_data is not None: return cached_data
-        valid_rows:list[list[int]] = []
+        valid_rows:list[str] = []
         for index in range(colors ** size[0]):
             index_string = int_to_string(index, colors).zfill(size[0])
-            if not is_invalid_string(index_string):
-                index_list = [int(i) for i in index_string]
-                valid_rows.append(index_list)
-        if colors ** size[0] >= 4096: create_cache(valid_rows)
+            if not is_invalid_base_0(index_string):
+                valid_rows.append(index_string)
+        if size[0] * colors >= 24: create_cache(valid_rows)
         return valid_rows
 
-    def create_cache(valid_rows:list[list[int]]) -> None:
+    def create_cache(valid_rows:list[str]) -> None:
         path_name = "./_cache/solution_%s_%s.bin" % (size[0], colors)
         if os.path.exists(path_name): return
         byte_length = ceil((size[0] + 7) / (16 / colors)) # how long each valid row is
-        data_bytes = b"".join([int("".join(int_to_string(tile, colors) for tile in valid_row), colors).to_bytes(byte_length, "big") for valid_row in valid_rows])
+        data_bytes = b"".join([int(valid_row, colors).to_bytes(byte_length, "big") for valid_row in valid_rows])
         with open(path_name, "wb") as f:
             f.write(data_bytes)
 
@@ -84,14 +77,14 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
             number //= base
         return result[::-1] or "0"
 
-    def fetch_cache() -> list[list[int]]|None:
+    def fetch_cache() -> list[str]|None:
         path_name = "./_cache/solution_%s_%s.bin" % (size[0], colors)
         if not os.path.exists(path_name): return None
         with open(path_name, "rb") as f:
             data_bytes = f.read()
         byte_length = ceil((size[0] + 7) / (16 / colors)) # how long each valid row is
         data = [data_bytes[i:i + byte_length] for i in range(0, len(data_bytes), byte_length)]
-        valid_rows = [[int(tile, colors) for tile in list(int_to_string(int.from_bytes(valid_row, "big"), colors).zfill(size[0]))] for valid_row in data]
+        valid_rows = [int_to_string(int.from_bytes(valid_row, "big"), colors).zfill(size[0]) for valid_row in data]
         return valid_rows
 
     if seed is None: seed = random.randint(-2147483648, 2147483647)
@@ -100,29 +93,34 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
     max_per_row = size[0] // colors
     max_per_column = size[1] // colors
     
-    three_in_a_row_regular_expression = re.compile("|".join([str(i) + "{3}" for i in range(colors)]))
+    three_in_a_row_regular_expression_base_0 = re.compile("|".join([str(i) + "{3}" for i in range(colors)]))
+    three_in_a_row_regular_expression_base_1 = re.compile("|".join([str(i) + "{3}" for i in range(1, colors + 1)]))
     valid_rows = get_valid_rows()
+    # print(len(valid_rows)); assert False
     random.shuffle(valid_rows)
 
     y_position = 0
-    tiles:list[int] = [-1 for i in range(size[0] * size[1])] # output
+    tiles:list[int] = [0 for i in range(size[0] * size[1])] # output
+    wave_collapse_storage:list[str] = [None] * size[1]
+    # output_rows:dict[int,str] = dict([(i, None) for i in range(7)]) # for debug
     row_tries:list[int] = [0] * size[1]
     previous_states:set[str] = set()
     while y_position < size[1]:
-        # LevelPrinter.print_board([tile + 1 for tile in tiles], size)
         row_tries[y_position] += 1
         current_row = valid_rows.pop(0)
-        # print(seed, size, row_tries, y_position)
+        # print(seed, size, wave_collapse_storage, output_rows, row_tries, y_position)
         for x_position in range(size[0]):
-            set_tile_to(x_position, y_position, current_row[x_position]) # TODO: write some slicing weirdness or whatever to make this faster; maybe list comprehension.
+            set_tile_to(x_position, y_position, int(current_row[x_position]) + 1) # TODO: write some slicing weirdness or whatever to make this faster; maybe list comprehension.
+        # output_rows[y_position] = current_row
         if grid_is_valid(y_position == size[1] - 1):
+            wave_collapse_storage[y_position] = current_row
             y_position += 1
         else:
-            # valid_rows.append(current_row)
+            valid_rows.append(current_row)
             clear_row_from_tiles(y_position)
             if row_tries[y_position] >= len(valid_rows):
             # if row_tries[y_position] >= len(valid_rows):
-                this_state = tuple([tuple(valid_row) for valid_row in valid_rows])
+                this_state = tuple(valid_rows)
                 if this_state in previous_states: random.shuffle(valid_rows)
                 previous_states.add(this_state)
                 row_tries[y_position] = 0
@@ -131,7 +129,6 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
                     row_tries[remove_index] = 0
                 y_position = 1
     random.seed(after_seed)
-    tiles = [tile + 1 for tile in tiles]
     return tiles # TODO: make valid_rows a list of lists of ints *after* being generated and remove wave_collapse_storage
 
 def count_empty_tiles(tiles:list[int]) -> int:
@@ -169,9 +166,16 @@ def generate(size:int|tuple[int,int], seed:int=None, colors:int=2) -> tuple[list
     else: solution_generator_size = size; is_rotated = False
     full_grid = generate_solution(solution_generator_size, seed, colors)
     if is_rotated: full_grid = rotate_board(full_grid, solution_generator_size)
-
-    empty_grid = breakdown(full_grid, size, seed, colors)
-    quality = round(count_empty_tiles(empty_grid) / (size[0] * size[1]) * 100) # how many empty tiles there are
+    largest_size = max(size)
+    QUALITY_REQUIREMENTS = {4: 60, 6: 60, 8: 60, 10: 60, 12: 60}
+    quality_requirement = QUALITY_REQUIREMENTS[largest_size] if largest_size in QUALITY_REQUIREMENTS else 60
+    TOTAL_TRIES = 42
+    for i in range(TOTAL_TRIES):
+        empty_grid = breakdown(full_grid, size, seed, colors, quality_requirement)
+        quality = round(count_empty_tiles(empty_grid) / (size[0] * size[1]) * 100) # how many empty tiles there are
+        #if quality > quality_requirement: break # the more empty tiles, the better. break if it's good enough.
+        break
+    else: raise RuntimeError("The board expired!")
     other_data = {"seed": seed, "quality": quality}
     random.seed(after_seed)
     return full_grid, empty_grid, other_data
@@ -181,7 +185,7 @@ def restore_cache(tiles_values:list[list[int]], tiles_cache:list[list[int]], col
     for index, tile in enumerate(tiles_cache):
         if tile != DEFAULT: tiles_values[index] = tile[:]
 
-def strip_dependencies(dependencies:list[list[int]], tile_index:int, tiles_cache:list[list[int]], colors:int) -> None:
+def strip_dependencies(dependencies:list[list[int]], tiles:list[int], tile_index:int, tiles_cache:list[list[int]], colors:int) -> None:
     '''Removes tiles related to the given tile and resets their dependencies''' # TODO: remove the parameter `tiles`
     DEFAULT = list(range(1, colors + 1))
     affected_tiles = set([tile_index])
@@ -238,13 +242,16 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, qual
     tiles_cache:list[int] = [list(range(1, colors + 1))] * (size[0] * size[1])
     DEFAULT = list(range(1, colors + 1))
     for tile_index in random_range:
+        if since_last_success >= 6:
+            if quality_requirement is None: break
+            elif round(count_unknown_tiles(tiles) / (size[0] * size[1]) * 100) > quality_requirement: break
         tile_value = tiles[tile_index]
         tiles[tile_index] = DEFAULT[:]
-        strip_dependencies(dependencies, tile_index, tiles_cache, colors)
+        strip_dependencies(dependencies, tiles, tile_index, tiles_cache, colors)
 
         current_state = copy_tiles(tiles)
         restore_cache(tiles, tiles_cache, colors) # TODO: if the board is full except for one after this function; assume it's completable (and measure performance)
-        # was_successful = LevelSolverOld.solve(size, tiles, tile_index, dependencies, colors)
+        # was_successful = solve(size, tiles, tile_index, dependencies, colors)
         was_successful = LevelSolver.solve(size, colors, tiles, tile_index, dependencies)
         tiles_cache = tiles
         tiles = current_state
@@ -262,19 +269,13 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, qual
 
 if __name__ == "__main__":
     os.chdir(os.path.split(os.path.split(__file__)[0])[0])
-    size = 6
+    size = 4
     # full, empty, other_data = cProfile.run("generate(size, 1234, 2)")
-    full, empty, other_data = generate(size, 0, colors=3)
+    full, empty, other_data = generate(size, 889, colors=2)
 
     print("FULL:")
     LevelPrinter.print_board(full, size)
     print("EMPTY:")
     LevelPrinter.print_board(empty, size)
 
-# TODO: re-design the generation script:
-# 1. Generate a random tile.
-# 2. Solve the board as far as possible.
-# 3. If the generated board creates a mistake, switch the color of the previous tile. If
-#    both colors generate an error, switch another tile placed previously to another color.
-# 4. Return to step 1 if the board is not complete.
-# 5. Check for errors.
+# TODO: generate solution: it may be possible to not generate the entire valid_rows list, but instead a small portion of it. The list may be expanded when it normally reshuffles the list.

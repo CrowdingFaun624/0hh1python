@@ -68,13 +68,15 @@ def time_test(specified_colors:list[int]|None=None) -> dict[int,dict[str,any]]:
     for colors in specified_colors:
         sizes = SIZES[colors]
         for size in sizes:
-            all_times_generator:list[int] = []
-            all_times_solver:list[int] = []
+            all_times_generator:list[float] = []
+            all_times_solver:list[float] = []
+            all_qualities:list[int] = []
             for i in range(REPEAT_COUNT[colors][size]):
                 percentage = round(i / REPEAT_COUNT[colors][size] * 100)
                 print(size, ": ", percentage, "%, seed ", i, sep="")
                 start_time = time.perf_counter()
                 full, empty, other_data = LevelCreator.generate(size, i, colors)
+                all_qualities.append(other_data["quality"])
                 end_time = time.perf_counter()
                 time_elapsed = end_time - start_time
                 all_times_generator.append(time_elapsed)
@@ -87,7 +89,7 @@ def time_test(specified_colors:list[int]|None=None) -> dict[int,dict[str,any]]:
                 solved = collapse_tiles(solved, colors, True)
                 if 0 in solved: raise_error("The solved board is incomplete!")
                 elif solved != full: raise_error("The full and solved boards are different!")
-            output[colors][size] = ({"mean_gen": mean(all_times_generator), "median_gen": median(all_times_generator), "mean_sol": mean(all_times_solver), "median_sol": median(all_times_solver)})
+            output[colors][size] = ({"mean_gen": mean(all_times_generator), "median_gen": median(all_times_generator)})
     print(output)
     return output
 
@@ -158,8 +160,8 @@ def time_distribution(size:int=12, count:int|None=None, colors:int=2, file:str|N
 
 if __name__ == "__main__":
     # time_test_rectangle()
-    time_test()
+    # time_test()
     # time_distribution(12, 8, 3)
-    # get_seed_hashes(6, colors=2, file="C:/Users/ander/Downloads/0hh1_with_change.json")
+    get_seed_hashes(6, colors=3, file="C:/Users/ander/Downloads/0hh1_with_change_3.json")
     # test_a_lot()
     # time_distribution(12, file="C:/Users/ander/Downloads/0hh1_12_distributions.json")

@@ -7,7 +7,7 @@ except ImportError:
 
 def get_row_indexes(size:tuple[int,int], y_position:int) -> list[int]:
     '''Returns a list of indexes in the row.'''
-    return list(range(y_position * size[0], (y_position + 1) * size[0], 1))
+    return list(range(y_position * size[0], (y_position + 1) * size[0]))
 def get_column_indexes(size:tuple[int,int], x_position:int) -> list[int]:
     '''Returns a list of indexes in the column.'''
     return list(range(x_position, size[0] * size[1], size[0]))
@@ -337,37 +337,6 @@ def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_ti
         rows_to_solve = []
         columns_to_solve = []
         
-        # rows_to_solve_local = rows_to_solve_copy[:]
-        # columns_to_solve_local = columns_to_solve_copy[:]
-        # while len(rows_to_solve_local) != 0 and len(columns_to_solve_local) != 0: # THREE-IN-A-ROW
-            # unsolved_rows:set[int] = set()
-            # unsolved_columns:set[int] = set()
-            # was_successful = three_in_a_row()
-            # if got_desired_tile(): return True
-            # if was_successful: did_something = True
-            # for unsolved_row in unsolved_rows: rows_to_solve_local.remove(unsolved_row)
-            # for unsolved_column in unsolved_columns: columns_to_solve_local.remove(unsolved_column)
-        # rows_to_solve_local = rows_to_solve_copy[:]
-        # columns_to_solve_local = columns_to_solve_copy[:]
-        # while len(rows_to_solve_local) != 0 and len(columns_to_solve_local) != 0: # BALANCING
-            # unsolved_rows:set[int] = set()
-            # unsolved_columns:set[int] = set()
-            # was_successful = balancing()
-            # if got_desired_tile(): return True
-            # if was_successful: did_something = True
-            # for unsolved_row in unsolved_rows: rows_to_solve_local.remove(unsolved_row)
-            # for unsolved_column in unsolved_columns: columns_to_solve_local.remove(unsolved_column)
-        # if colors != 2:
-            # rows_to_solve_local = rows_to_solve_copy[:]
-            # columns_to_solve_local = columns_to_solve_copy[:]
-            # while len(rows_to_solve_local) != 0 and len(columns_to_solve_local) != 0: # BALANCE POSSIBILITIES
-                # unsolved_rows:set[int] = set()
-                # unsolved_columns:set[int] = set()
-                # was_successful = balancing_possibilities()
-                # if got_desired_tile(): return True
-                # if was_successful: did_something = True
-                # for unsolved_row in unsolved_rows: rows_to_solve_local.remove(unsolved_row)
-                # for unsolved_column in unsolved_columns: columns_to_solve_local.remove(unsolved_column)
         rows_to_solve_local = rows_to_solve_copy[:]
         columns_to_solve_local = columns_to_solve_copy[:]
         while len(rows_to_solve_local) != 0 and len(columns_to_solve_local) != 0:
