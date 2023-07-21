@@ -67,7 +67,7 @@ class Tile(Drawable.Drawable):
         # there's no built in clamp function or anything wtf
         if self.transition_progress < 0.0: self.transition_progress = 0.0
         elif self.transition_progress > 1.0: self.transition_progress = 1.0
-        self.transition_progress_eased = Bezier.ease_out(0.0, 1.0, self.transition_progress)
+        self.transition_progress_eased = Bezier.ease_out(0.0, 1.0, self.transition_progress) # TODO: add condition to reverse this.
     
     def advance_multicolor_brightness_progress(self, current_time:float) -> None:
         '''Changes the multicolor brightness progress according to the current state'''
@@ -82,7 +82,7 @@ class Tile(Drawable.Drawable):
             self.multicolor_brightness_progress[index] += direction * amount
             if self.multicolor_brightness_progress[index] < 0.0: self.multicolor_brightness_progress[index] = 0.0
             elif self.multicolor_brightness_progress[index] > 1.0: self.multicolor_brightness_progress[index] = 1.0
-            self.multicolor_brightness_progress_eased[index] = Bezier.ease_out(0.0, 1.0, self.multicolor_brightness_progress[index])
+            self.multicolor_brightness_progress_eased[index] = Bezier.ease_out(0.0, 1.0, self.multicolor_brightness_progress[index]) #  TODO: add condition to reverse this.
 
     def display(self, required_surface_conditions:list[any], current_time:float) -> pygame.Surface:
         # if self.index == 17: print(self.index, self.transition_progress)
