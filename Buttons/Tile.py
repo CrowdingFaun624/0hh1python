@@ -87,6 +87,10 @@ class Tile(Drawable.Drawable):
                 case 1:
                     self.multicolor_brightness_progress_eased[index] = 1 - Bezier.ease_out(0.0, 1.0, 1 - self.multicolor_brightness_progress[index])
 
+    def display_loading(self, elapsed_time:float) -> pygame.Surface:
+        self.__get_rotation_loading(elapsed_time)
+        return self.__get_surface_normal(elapsed_time)
+
     def display(self, required_surface_conditions:list[any], current_time:float) -> pygame.Surface:
         # if self.index == 17: print(self.index, self.transition_progress)
         if self.current_surface_conditions == required_surface_conditions:
@@ -177,7 +181,11 @@ class Tile(Drawable.Drawable):
         self.rotation = 0
         if self.click_type == "locked":
             if current_time - self.click_time <= time:
-                self.rotation = math.radians(Animations.animate(Animations.wiggle, time, Bezier.linear_bezier, current_time - self.click_time)) # ANIMATION
+                self.rotation = math.radians(Animations.animate(Animations.wiggle, time, Bezier.ease, current_time - self.click_time)) # ANIMATION
+        self.sin_rotation = math.sin(self.rotation)
+        self.cos_rotation = math.cos(self.rotation)
+    def __get_rotation_loading(self, elapsed_time:float) -> None:
+        self.rotation = math.radians(Animations.animate(Animations.wiggle, 2.0, Bezier.ease, elapsed_time, True))
         self.sin_rotation = math.sin(self.rotation)
         self.cos_rotation = math.cos(self.rotation)
 

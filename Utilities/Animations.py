@@ -1,4 +1,9 @@
-import Utilities.Bezier as Bezier
+from collections.abc import Callable
+
+# try:
+#     import Utilities.Bezier as Bezier
+# except ImportError:
+#     import Bezier
 
 wiggle = { # angle (degrees)
     0.0: 3.0,
@@ -21,12 +26,10 @@ subtle_hint = { # y position (%)
     1.0: 0.0
 }
 
-def animate(animation:dict[float,float], duration:float, bezier_function, time:float, infinite:bool=False) -> float:
+def animate(animation:dict[float,float], duration:float, bezier_function:Callable[[float,float,float],float], time:float, infinite:bool=False) -> float:
     time = time % duration
-    # if time > 1.0: return animation[1.0]
-    # elif time < 0.0: return animation[0.0]
     time_fraction = time / duration
-    anim_time:float = bezier_function(0, 1, time_fraction)
+    anim_time = time_fraction
     if anim_time in animation: return animation[anim_time]
     min_time = 0.0
     max_time = 1.0
@@ -34,9 +37,8 @@ def animate(animation:dict[float,float], duration:float, bezier_function, time:f
         if period < anim_time: min_time = period; break
     for period in animation:
         if period > anim_time: max_time = period; break
-    # print(min_time, max_time, time, anim_time)
     inter_period = max_time - min_time
     if inter_period == 0: return animation[max_time]
     past_min = anim_time - min_time
     if infinite: max_time = max_time % 1.0
-    return Bezier.linear_bezier(animation[min_time], animation[max_time], past_min / inter_period)
+    return bezier_function(animation[min_time], animation[max_time], past_min / inter_period)

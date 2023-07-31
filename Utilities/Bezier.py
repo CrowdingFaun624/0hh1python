@@ -24,7 +24,6 @@ def prepare_curve(x1:float, y1:float, x2:float, y2:float) -> Callable[[float,flo
         delta_time = time2 - time1 # between pre-point and post-point
         trailing_time = time - time1 # between pre-point and point
         progress = trailing_time / delta_time
-        assert progress > 0.0 and progress < 1.0 # NOTE: DEBUG
         return linear_bezier(p1, p2, linear_bezier(plot[1][index1], plot[1][index2], progress))
     delta_time = 1 / RESOLUTION
     x_values:list[float] = []
@@ -38,6 +37,7 @@ def prepare_curve(x1:float, y1:float, x2:float, y2:float) -> Callable[[float,flo
     plot = (x_values, y_values)
     return get_function
 
-RESOLUTION = 64
+RESOLUTION = 16
 ease = prepare_curve(0.25, 0.1, 0.25, 1.0)
 ease_out = prepare_curve(0.0, 0.0, 0.58, 1.0)
+ease_in = prepare_curve(0.42, 0.0, 1.0, 1.0)

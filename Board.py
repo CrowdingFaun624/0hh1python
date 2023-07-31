@@ -1,19 +1,29 @@
 import math
 import pygame
 import random
+import threading
 import time
 
 import Drawable
 import Utilities.LevelCreator as LevelCreator
+import Utilities.LevelPrinter as LevelPrinter
 import Buttons.Tile as Tile
+import Fonts.Fonts as Fonts
+import Colors
+import Utilities.Bezier as Bezier
 
 CLICK_ACTION_LOCKED = "locked"
 CLICK_ACTION_SUCCESS = "success"
+LOADING_TILE_SIZE = 0.5
+FADE_IN_TIME = 0.3
+FADE_OUT_TIME = 2.0
+COMPLETION_WAIT_TIME = 0.75
 
 class Board(Drawable.Drawable):
 
     def __init__(self, size:int|tuple[int,int], seed:int=None, colors:int=2) -> None:
         if isinstance(size, int): size = (size, size)
+        self.should_destroy = False
         largest_size = max(size)
         self.display_size = 640 / largest_size
         if seed is None: self.seed = random.randint(-2147483648, 2147483647)
@@ -21,17 +31,36 @@ class Board(Drawable.Drawable):
         self.size = size
         self.colors = colors
         self.__current_mouse_over:int = None
-        self.get_board_from_seed()
-        self.init_tiles()
         self.is_complete = False # used for locking all of the tiles
+        self.is_fading_out = False
+        self.is_finished_loading = False
+        generation_thread = threading.Thread(target=self.get_board_from_seed)
+        generation_thread.start()
+
+    def loading_screen_init(self) -> None:
+        self.loading_start_time = time.time()
+        self.loading_finish_time = None
+        self.completion_time = None
+        padding_amount = self.display_size * 0.04
+        loading_tile_size = LOADING_TILE_SIZE * min(self.display_size *  max(self.size) + padding_amount, self.display_size *  max(self.size) + padding_amount)
+        self.loading_tile = Tile.Tile(0, loading_tile_size, self.colors, False, self.colors, self.loading_start_time)
+        self.loading_tile.previous_value = None
+        self.loading_text = Fonts.loading_screen.render("Loading", True, Colors.font)
 
     def get_board_from_seed(self) -> list[int]:
-        self.full_board, self.empty_board, self.other_data =  LevelCreator.generate(self.size, self.seed, self.colors)
+        self.loading_screen_init()
+        self.full_board, self.empty_board, self.other_data, self.tiles = None, None, None, None
+        # return
+        self.full_board, self.empty_board, self.other_data = LevelCreator.generate(self.size, self.seed, self.colors)
         if self.colors == 2:
             self.player_board = self.empty_board[:]
         else:
             DEFAULT = list(range(1, self.colors + 1))
             self.player_board = [(DEFAULT[:] if value == 0 else [value]) for value in self.empty_board]
+        self.init_tiles()
+        
+        self.is_finished_loading = True
+        self.loading_finish_time = time.time()
 
     def init_tiles(self) -> None:
         self.tiles:list[Tile.Tile] = []
@@ -50,20 +79,75 @@ class Board(Drawable.Drawable):
 
     def display(self, ticks:int) -> pygame.Surface:
         padding_amount = self.display_size * 0.04
-        surface = pygame.Surface((self.display_size * self.size[0] + padding_amount, self.display_size * self.size[1] + padding_amount), pygame.SRCALPHA)
+        if not self.is_finished_loading:
+            largest_size = max(self.size)
+            surface_size = (self.display_size * largest_size + padding_amount, self.display_size * largest_size + padding_amount)
+        else:
+            surface_size = (self.display_size * self.size[0] + padding_amount, self.display_size * self.size[1] + padding_amount)
+        surface = pygame.Surface(surface_size, pygame.SRCALPHA)
+        surface.fill(Colors.background)
         current_time = time.time()
-        for index in range(self.size[0] * self.size[1]):
-            x = index % self.size[0]
-            y = index // self.size[0]
-            tile_surface_requirements = self.tiles[index].tick(current_time)
-            tile_surface = self.tiles[index].display(tile_surface_requirements, current_time)
-            self.tiles[index].last_tick_time = current_time
-            surface.blit(tile_surface, (x*self.display_size, y*self.display_size))
+
+        opacity = 1.0
+        if self.loading_finish_time is not None:
+            since_load_stop = current_time - self.loading_finish_time
+            if since_load_stop <= FADE_IN_TIME:
+                fraction_since_stop = since_load_stop / FADE_IN_TIME
+                opacity = Bezier.ease_out(0.0, 1.0, fraction_since_stop)
+        if self.is_fading_out:
+            since_completion = current_time - self.completion_time - COMPLETION_WAIT_TIME
+            if since_completion <= FADE_OUT_TIME:
+                fraction_since_complete = since_completion / FADE_OUT_TIME
+                opacity = 1 - Bezier.ease_in(0.0, 1.0, fraction_since_complete)
+            else: opacity = 0.0
+
+        if self.is_finished_loading:
+            for index in range(self.size[0] * self.size[1]):
+                x = index % self.size[0]
+                y = index // self.size[0]
+                tile_surface_requirements = self.tiles[index].tick(current_time)
+                tile_surface = self.tiles[index].display(tile_surface_requirements, current_time)
+                if opacity != 1.0: tile_surface.set_alpha(opacity * 255)
+                elif tile_surface.get_alpha() != 255: tile_surface.set_alpha(255)
+                
+                self.tiles[index].last_tick_time = current_time
+                surface.blit(tile_surface, (x*self.display_size, y*self.display_size))
+            
+        if not self.is_finished_loading or current_time - self.loading_finish_time <= FADE_IN_TIME:
+            self.__display_loading_screen(current_time, surface_size, surface)
         return surface
+
+    def __display_loading_screen(self, current_time:float, surface_size:tuple[float,float], surface:pygame.Surface) -> None:
+        since_load_start = current_time - self.loading_start_time
+        since_load_stop = current_time - self.loading_finish_time if self.loading_finish_time is not None else None
+        opacity = 1.0
+        if since_load_stop is not None and since_load_stop <= FADE_IN_TIME:
+            fraction_since_stop = since_load_stop / FADE_IN_TIME
+            opacity = 1 - Bezier.ease_out(0.0, 1.0, fraction_since_stop)
+        elif since_load_start <= FADE_IN_TIME:
+            fraction_since_start = since_load_start / FADE_IN_TIME
+            opacity = Bezier.ease_out(0.0, 1.0, fraction_since_start)
+
+        center_x = surface_size[0] / 2; center_y = surface_size[1] * 1.25 / 2
+        smallest_size = min(surface_size)
+        tile_size = smallest_size * LOADING_TILE_SIZE
+        corner_x_tile = center_x - (tile_size / 2); corner_y_tile = center_y - (tile_size / 2)
+        loading_tile_surface = self.loading_tile.display_loading(current_time - self.loading_start_time)
+        if opacity != 1.0: loading_tile_surface.set_alpha(opacity * 255)
+        surface.blit(loading_tile_surface, (corner_x_tile, corner_y_tile))
+
+        center_x = surface_size[0] / 2; center_y = surface_size[1] * 0.5 / 2
+        text_size = self.loading_text.get_size()
+        corner_x_text = center_x - (text_size[0] / 2); corner_y_text = center_y - (text_size[1] / 2)
+        if opacity != 1.0: self.loading_text.set_alpha(opacity * 255)
+        surface.blit(self.loading_text, (corner_x_text, corner_y_text))
 
     def tile_is_empty(self, tile) -> bool:
         if tile == 0: return True
         elif isinstance(tile, list): return len(tile) == self.colors
+
+    def destroy(self) -> list[Drawable.Drawable]:
+        return [Board(self.size, colors=self.colors)]
 
     def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> None:
         def get_relative_mouse_position(position:tuple[float,float]|None=None) -> tuple[float,float]:
@@ -71,6 +155,7 @@ class Board(Drawable.Drawable):
             return position[0] - screen_position[0], position[1] - screen_position[1]
         def get_index(position:tuple[float,float]|None=None) -> int|None:
             '''Gets the index of the tile the mouse is over'''
+            if not self.is_finished_loading: return None
             if position is None: position = event.__dict__["pos"]
             position = get_relative_mouse_position(position)
             if position[0] > self.display_size * self.size[0] or position[0] < 0: return None
@@ -97,7 +182,7 @@ class Board(Drawable.Drawable):
                 current_value = current_value % (self.colors + 1)
                 self.player_board[index] = current_value
                 self.tiles[index].value = current_value
-                if 0 not in self.player_board: self.is_complete = True
+                if 0 not in self.player_board: self.is_complete = True; self.completion_time = time.time()
             else:
                 self.tiles[index].previous_value = self.player_board[index][:]
                 x, y = get_relative_mouse_position()
@@ -123,7 +208,7 @@ class Board(Drawable.Drawable):
                         if color + 1 in self.player_board[index]:
                             self.player_board[index].remove(color + 1)
                             self.tiles[index].click_time_sections[color] = time.time()
-                if False not in [len(tile) == 1 for tile in self.player_board]: self.is_complete = True
+                if False not in [len(tile) == 1 for tile in self.player_board]: self.is_complete = True; self.completion_time = time.time()
 
         # def mouse_over() -> None:
         #     index = get_index(pygame.mouse.get_pos())
@@ -157,5 +242,8 @@ class Board(Drawable.Drawable):
                 case pygame.MOUSEBUTTONDOWN: mouse_button_down()
                 case pygame.MOUSEMOTION: mouse_motion()
                 case pygame.WINDOWLEAVE: mouse_leave()
-            # if event.type in TYPES: TYPES[event.type]()
-        # mouse_over()
+        
+        current_time = time.time()
+        if self.is_complete: self.is_fading_out = (current_time - self.completion_time > COMPLETION_WAIT_TIME)
+        if self.is_fading_out and current_time - self.completion_time > COMPLETION_WAIT_TIME + FADE_OUT_TIME:
+            self.should_destroy = True

@@ -4,6 +4,7 @@ import pygame
 class Drawable():
     def __init__(self, surface:pygame.Surface) -> None:
         self.surface = surface
+        self.should_destroy = False
     
     def display(self, ticks:int) -> pygame.Surface:
         return self.surface
@@ -13,7 +14,11 @@ class Drawable():
         y = vector[0] * math.sin(angle) + vector[1] * math.cos(angle)
         return x, y
 
-    def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> None: ...
+    def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> list["Drawable"]|None: ...
+
+    def destroy(self) -> list["Drawable"]:
+        '''used to add additional elements to the objects list when an element is destroyed.'''
+        return []
 
     # https://stackoverflow.com/questions/15098900/how-to-set-the-pivot-point-center-of-rotation-for-pygame-transform-rotate
     def rotate_around_point(self, surface, angle:int, pivot:tuple[int,int], offset:tuple[int,int]) -> pygame.Surface:
