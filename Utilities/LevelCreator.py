@@ -7,19 +7,12 @@ import re
 try:
     import Utilities.LevelPrinter as LevelPrinter
     import Utilities.LevelSolver as LevelSolver
-    import Utilities.ExperimentsAndOldStuff.LevelSolverOld as LevelSolverOld
 except ImportError:
     import LevelPrinter
     import LevelSolver
-    import ExperimentsAndOldStuff.LevelSolverOld as LevelSolverOld
 
 def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[int]:
     # wave collapse algorithm I think
-    def get_tile(x:int, y:int) -> int:
-        return tiles[size[0] * y + x]
-    def set_tile_to(x:int, y:int, value:int) -> None: # TODO: remove this function and replace uses with more efficient versions.
-        tiles[size[0] * y + x] = value
-    
     def grid_is_valid(is_final:bool) -> bool:
         already_columns:list[str] = []
         for index in range(size[0]):
@@ -32,9 +25,8 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
     def clear_row_from_tiles(y:int) -> None:
         if tiles[y * size[0]] != -1: # if the line already exists, remove it and put it back in valid rows.
             valid_rows.append(tiles[y * size[0]:(y + 1) * size[0]])
-        # for i in range(y * size[0],(y + 1) * size[0]): tiles[i] = 0
-        for x_position in range(size[0]):
-            set_tile_to(x_position, y, -1)
+        for x in range(y * size[0],(y + 1) * size[0]): tiles[x] = -1
+    
     def get_column(x_position:int) -> list[int]:
         return [i for i in tiles[x_position::size[0]]]
     def is_invalid_string(row:str) -> bool:
@@ -47,13 +39,7 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
         '''Detects the invalidity of a row or column if empty is 0, red is 1, and blue is 2'''
         for color in range(colors):
             if column.count(color) > max_per_column: return True
-        previous_tile1 = None; previous_tile2 = None
-        for current_tile in column:
-            if previous_tile1 is not None and previous_tile2 is not None and previous_tile2 != -1 and previous_tile1 == previous_tile2 == current_tile:
-                return True
-            previous_tile2 = previous_tile1
-            previous_tile1 = current_tile
-        return False
+        return y_position >= 2 and (column[y_position] != -1 and column[y_position] == column[y_position-1] and column[y_position] == column[y_position-2])
 
     def get_valid_rows() -> list[list[int]]:
         if colors ** size[0] >= 4096:
@@ -113,15 +99,14 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
         row_tries[y_position] += 1
         current_row = valid_rows.pop(0)
         # print(seed, size, row_tries, y_position)
-        for x_position in range(size[0]):
-            set_tile_to(x_position, y_position, current_row[x_position]) # TODO: write some slicing weirdness or whatever to make this faster; maybe list comprehension.
+
+        for index, x_position in enumerate(range(y_position * size[0],(y_position + 1) * size[0])): tiles[x_position] = current_row[index]
+
         if grid_is_valid(y_position == size[1] - 1):
             y_position += 1
         else:
-            # valid_rows.append(current_row)
             clear_row_from_tiles(y_position)
             if row_tries[y_position] >= len(valid_rows):
-            # if row_tries[y_position] >= len(valid_rows):
                 this_state = tuple([tuple(valid_row) for valid_row in valid_rows])
                 if this_state in previous_states: random.shuffle(valid_rows)
                 previous_states.add(this_state)
@@ -262,9 +247,9 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, qual
 
 if __name__ == "__main__":
     os.chdir(os.path.split(os.path.split(__file__)[0])[0])
-    size = 6
+    size = 4
     # full, empty, other_data = cProfile.run("generate(size, 1234, 2)")
-    full, empty, other_data = generate(size, 0, colors=3)
+    full, empty, other_data = generate(size, 123, colors=2)
 
     print("FULL:")
     LevelPrinter.print_board(full, size)

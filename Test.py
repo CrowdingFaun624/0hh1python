@@ -160,8 +160,8 @@ def time_distribution(size:int=12, count:int|None=None, colors:int=2, file:str|N
 
 if __name__ == "__main__":
     # time_test_rectangle()
-    # time_test()
+    time_test()
     # time_distribution(12, 8, 3)
-    get_seed_hashes(6, colors=3, file="C:/Users/ander/Downloads/0hh1_with_change_3.json")
+    # get_seed_hashes(6, colors=3, file="C:/Users/ander/Downloads/0hh1_with_change_3.json")
     # test_a_lot()
     # time_distribution(12, file="C:/Users/ander/Downloads/0hh1_12_distributions.json")
