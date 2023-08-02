@@ -1,7 +1,7 @@
 def collapse_board(tiles:list[list[int]], colors:int=None, strict:bool=False) -> list[int]:
     output:list[int] = []
     for tile_index, tile in enumerate(tiles):
-        if len(tile) == 0: raise ValueError("0-length tile at %s!" % tile_index)
+        if strict and len(tile) == 0: raise ValueError("0-length tile at %s!" % tile_index)
         if len(tile) == 1: output.append(tile[0])
         elif strict and len(tile) < colors: raise ValueError("%s-length tile at %s!" % (len(tile), tile_index))
         else: output.append(0)
