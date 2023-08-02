@@ -23,9 +23,8 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
         return True
     
     def clear_row_from_tiles(y:int) -> None:
-        if tiles[y * size[0]] != -1: # if the line already exists, remove it and put it back in valid rows.
-            valid_rows.append(tiles[y * size[0]:(y + 1) * size[0]])
-        for x in range(y * size[0],(y + 1) * size[0]): tiles[x] = -1
+        valid_rows.append(tiles[y * size[0]:(y + 1) * size[0]])
+        tiles[y * size[0]:(y + 1) * size[0]] = [-1] * size[0]
     
     def get_column(x_position:int) -> list[int]:
         return [i for i in tiles[x_position::size[0]]]
@@ -73,11 +72,13 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
     def fetch_cache() -> list[list[int]]|None:
         path_name = "./_cache/solution_%s_%s.bin" % (size[0], colors)
         if not os.path.exists(path_name): return None
-        with open(path_name, "rb") as f:
-            data_bytes = f.read()
         byte_length = ceil((size[0] + 7) / (16 / colors)) # how long each valid row is
-        data = [data_bytes[i:i + byte_length] for i in range(0, len(data_bytes), byte_length)]
-        valid_rows = [[int(tile, colors) for tile in list(int_to_string(int.from_bytes(valid_row, "big"), colors).zfill(size[0]))] for valid_row in data]
+        valid_rows:list[list[int]] = []
+        with open(path_name, "rb") as f:
+            f.seek(0, os.SEEK_END); file_size = f.tell(); f.seek(0, os.SEEK_SET) # get size
+            for i in range(file_size // byte_length):
+                data = f.read(byte_length)
+                valid_rows.append([int(tile, colors) for tile in list(int_to_string(int.from_bytes(data, "big"), colors).zfill(size[0]))])
         return valid_rows
 
     if seed is None: seed = random.randint(-2147483648, 2147483647)
@@ -99,8 +100,8 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
         row_tries[y_position] += 1
         current_row = valid_rows.pop(0)
         # print(seed, size, row_tries, y_position)
-
-        for index, x_position in enumerate(range(y_position * size[0],(y_position + 1) * size[0])): tiles[x_position] = current_row[index]
+        # for index, x_position in enumerate(range(y_position * size[0],(y_position + 1) * size[0])): tiles[x_position] = current_row[index]
+        tiles[y_position * size[0]:(y_position + 1) * size[0]] = current_row
 
         if grid_is_valid(y_position == size[1] - 1):
             y_position += 1
@@ -222,6 +223,7 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, qual
      # for optimization. It tracks the tiles a tile is dependent on to be solved.
     tiles_cache:list[int] = [list(range(1, colors + 1))] * (size[0] * size[1])
     DEFAULT = list(range(1, colors + 1))
+    # debug_string = ""
     for tile_index in random_range:
         tile_value = tiles[tile_index]
         tiles[tile_index] = DEFAULT[:]
@@ -233,12 +235,12 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, qual
         was_successful = LevelSolver.solve(size, colors, tiles, tile_index, dependencies)
         tiles_cache = tiles
         tiles = current_state
+        # debug_string += str(int(was_successful))
 
         if was_successful: tiles[tile_index] = DEFAULT[:]; since_last_success = 0
         else: tiles[tile_index] = tile_value; since_last_success += 1 # resets the tile's value in case it cannot be extrapolated from current board
         # LevelPrinter.print_board(tiles, size)
-    # The reason that you can just solve for the current tile instead of the whole board
-    # when checking if you need the tile is that
+    # print(debug_string)
     random.seed(after_seed)
     tiles = collapse_board(tiles, colors, True)
     if all([color not in tiles for color in range(1, colors + 1)]): # if there are no non-empty tiles
@@ -247,9 +249,9 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, qual
 
 if __name__ == "__main__":
     os.chdir(os.path.split(os.path.split(__file__)[0])[0])
-    size = 4
+    size = 14
     # full, empty, other_data = cProfile.run("generate(size, 1234, 2)")
-    full, empty, other_data = generate(size, 123, colors=2)
+    full, empty, other_data = generate(size, 50, colors=2)
 
     print("FULL:")
     LevelPrinter.print_board(full, size)

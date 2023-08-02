@@ -21,6 +21,10 @@ def has_incomplete_tiles(tiles:list[list[int]]) -> bool: # TODO: check the perfo
     for tile in tiles:
         if len(tile) != 1: return True
     else: return False
+def has_complete_tiles(tiles:list[list[int]]) -> bool:
+    for tile in tiles:
+        if len(tile) == 1: return True
+    else: return False
 def get_incomplete_tile_indexes(index_list:list[int], tiles:list[list[int]]) -> list[int]:
     '''Returns tiles in the index list whose values are not compeltely known.'''
     return [tile_index for tile_index in index_list if len(tiles[tile_index]) != 1]
@@ -32,27 +36,30 @@ def get_incomplete_tile_indexes_within(index_list:list[int], tiles:list[list[int
 
 def get_rows_to_solve(size:tuple[int,int], tiles:list[list[int]]) -> list[int]:
     '''Returns the row indexes that contain at least one non-complete tile.'''
-    return [row_index for row_index in range(size[1]) if has_incomplete_tiles(get_values(get_row_indexes(size, row_index), tiles))]
+    return [row_index for row_index in range(size[1]) if has_incomplete_tiles(values := get_values(get_row_indexes(size, row_index), tiles)) and has_complete_tiles(values)]
 def get_columns_to_solve(size:tuple[int,int], tiles:list[list[int]]) -> list[int]:
     '''Returns the column indexes that contain at least one non-complete tile.'''
-    return [column_index for column_index in range(size[1]) if has_incomplete_tiles(get_values(get_column_indexes(size, column_index), tiles))]
+    return [column_index for column_index in range(size[1]) if has_incomplete_tiles(values := get_values(get_column_indexes(size, column_index), tiles)) and has_complete_tiles(values)]
 
-def add_tiles_to_axes_to_solve(size, tiles_modified:list[int], rows_to_solve:list[int], columns_to_solve:list[int], rows_to_solve_copy:list[int]|None, columns_to_solve_copy:list[int]|None) -> None:
-    '''Appends to rows_to_solve and columns_to_solve using the modified tiles.''' # TODO: make it do local *and* copy
+def add_full_rows(tiles:list[list[int]], size:tuple[int,int], rows_to_solve:list[int], columns_to_solve:list[int], unsolved_rows:set[int], unsolved_columns:set[int]) -> None:
+    for row_index in rows_to_solve:
+        values = get_values(get_row_indexes(size, row_index), tiles)
+        if not has_incomplete_tiles(values): unsolved_rows.add(row_index)
+    for column_index in columns_to_solve:
+        values = get_values(get_column_indexes(size, column_index), tiles)
+        if not has_incomplete_tiles(values): unsolved_columns.add(column_index)
+
+def add_tiles_to_axes_to_solve(size, tiles_modified:list[int], rows_to_solve:list[int], columns_to_solve:list[int], unsolved_rows:set[int]|None, unsolved_columns:set[int]|None) -> None:
+    '''Appends to rows_to_solve and columns_to_solve using the modified tiles.'''
     rows = set([tile_modified // size[0] for tile_modified in tiles_modified])
     columns = set([tile_modified % size[0] for tile_modified in tiles_modified])
+    if unsolved_rows is not None: unsolved_rows -= rows
+    if unsolved_columns is not None: unsolved_columns -= columns
 
     not_in_rows_to_solve = rows - set(rows_to_solve)
     not_in_columns_to_solve = columns - set(columns_to_solve)
     rows_to_solve.extend(sorted(list(not_in_rows_to_solve)))
     columns_to_solve.extend(sorted(list(not_in_columns_to_solve)))
-
-    if rows_to_solve_copy is not None:
-        not_in_rows_to_solve_copy = rows - set(rows_to_solve_copy)
-        rows_to_solve_copy.extend(sorted(list(not_in_rows_to_solve_copy)))
-    if columns_to_solve_copy is not None:
-        not_in_columns_to_solve_copy = columns - set(columns_to_solve_copy)
-        columns_to_solve_copy.extend(sorted(list(not_in_columns_to_solve_copy)))
 
 # SOLVERS
 
@@ -66,11 +73,10 @@ def solve_three_in_a_row(colors:int, indexes:list[int], tiles:list[list[int]], d
     previous_tile2:int|None = None # tile twice before current
     previous_tile3:int|None = None # tile thrice before current; used for finding value on other side of three-in-a-row
 
-    def chain(*iterables): # https://stackoverflow.com/questions/35205162/iterating-over-two-lists-one-after-another # TODO: make this say it returns an int
+    def chain(*iterables) -> list[int]: # https://stackoverflow.com/questions/35205162/iterating-over-two-lists-one-after-another
         for iterable in iterables:
             yield from iterable
     for tile_index in chain(indexes, [None]):
-        tile_index:int # TODO remove line
         if previous_tile2 is not None:
             for color in POSSIBLE_VALUES: # TODO: if color not in tiles[tile_index] and color not in tiles[previous_tile1] and color not in tiles[previous_tile3]: continue
                 if tiles[previous_tile1] == [color] and tiles[previous_tile2] == [color]: # caps
@@ -132,34 +138,42 @@ def solve_cloning(size:tuple[int,int], tiles:list[list[int]], dependencies:list[
         dependency.remove(empty_tile2)
         dependencies[empty_tile1].extend(dependency)
         dependencies[empty_tile2].extend(dependency[:])
+    # FIXME: in situations where there are two full identical rows/columns and another one
+    # that is missing two tiles out of the row/column, it errors because the tiles no longer
+    # have the expected values.
     # TODO: reduce code duplication
     missing_two_tiles_rows:list[list[list[int]]] = [] # stores values of rows
     missing_two_tiles_rows_y:list[int] = [] # stores y postion of rows
     missing_two_tiles_rows_x:list[list[int]] = [] # stores x positions of tiles
     full_rows_y:list[int] = []
+    full_rows_values:list[list[list[int]]] = []
     was_successful = False
     tiles_modified:list[int] = []
     # FIND ROWS
     for row_y in range(size[1]):
         row_indexes = get_row_indexes(size, row_y)
         unknown_tiles = get_incomplete_tile_indexes_within(row_indexes, tiles) # index within row of unknown tiles
+        row_values = get_values(row_indexes, tiles)[:]
         match len(unknown_tiles):
             case 2:
-                row_values = get_values(row_indexes, tiles)[:]
                 tile1, tile2 = unknown_tiles
                 for color1 in row_values[tile1]:
-                    for color2 in row_values[tile2]: # TODO: they can't be the same
+                    for color2 in row_values[tile2]:
                         if color1 == color2: continue
                         new_row = row_values[:]
                         new_row[tile1] = [color1]; new_row[tile2] = [color2]
                         missing_two_tiles_rows.append(new_row)
                         missing_two_tiles_rows_y.append(row_y)
                         missing_two_tiles_rows_x.append(unknown_tiles)
-            case 0: full_rows_y.append(row_y)
+            case 0:
+                if row_values in full_rows_values: continue # if the row is already existing
+                full_rows_values.append(row_values)
+                full_rows_y.append(row_y)
     # SOLVE ROWS
-    for full_row_y in full_rows_y: # TODO: redo this to iterate over the empty rows/columns instead and measure performance.
+    for index, full_row_y in enumerate(full_rows_y): # TODO: redo this to iterate over the empty rows/columns instead and measure performance.
         full_row_indexes = get_row_indexes(size, full_row_y)
-        row_values = get_values(full_row_indexes, tiles)
+        # row_values = get_values(full_row_indexes, tiles)
+        row_values = full_rows_values[index]
         if row_values not in missing_two_tiles_rows: continue
         empty_row_index = missing_two_tiles_rows.index(row_values) # finds which empty row it can duplicate.
         y = missing_two_tiles_rows_y[empty_row_index]
@@ -179,12 +193,13 @@ def solve_cloning(size:tuple[int,int], tiles:list[list[int]], dependencies:list[
     missing_two_tiles_columns_x:list[int] = [] # stores x postion of columns
     missing_two_tiles_columns_y:list[list[int]] = [] # stores y positions of tiles
     full_columns_x:list[int] = []
+    full_columns_values:list[list[list[int]]] = []
     for column_x in range(size[0]):
         column_indexes = get_column_indexes(size, column_x)
         unknown_tiles = get_incomplete_tile_indexes_within(column_indexes, tiles) # index within column of unknown tiles
+        column_values = get_values(column_indexes, tiles)[:]
         match len(unknown_tiles):
             case 2:
-                column_values = get_values(column_indexes, tiles)[:]
                 tile1, tile2 = unknown_tiles
                 for color1 in column_values[tile1]:
                     for color2 in column_values[tile2]:
@@ -194,11 +209,15 @@ def solve_cloning(size:tuple[int,int], tiles:list[list[int]], dependencies:list[
                         missing_two_tiles_columns.append(new_column)
                         missing_two_tiles_columns_x.append(column_x)
                         missing_two_tiles_columns_y.append(unknown_tiles)
-            case 0: full_columns_x.append(column_x)
+            case 0:
+                if column_values in full_columns_values: continue
+                full_columns_values.append(column_values)
+                full_columns_x.append(column_x)
     # SOLVE COLUMNS
-    for full_column_x in full_columns_x:
+    for index, full_column_x in enumerate(full_columns_x):
         full_column_indexes = get_column_indexes(size, full_column_x)
-        column_values = get_values(full_column_indexes, tiles)
+        # column_values = get_values(full_column_indexes, tiles)
+        column_values = full_columns_values[index]
         if column_values not in missing_two_tiles_columns: continue
         empty_column_index = missing_two_tiles_columns.index(column_values) # finds which empty column it can duplicate.
         y1, y2 = missing_two_tiles_columns_y[empty_column_index]
@@ -260,60 +279,61 @@ def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_ti
         '''Initializing stuff within a for loop. Returns the index list and if it should continue or not.'''
         index_list = get_row_indexes(size, row_index)
         if not has_incomplete_tiles(get_values(index_list, tiles)):
-            unsolved_rows.add(row_index)
+            # unsolved_rows.add(row_index)
             return index_list, True
         return index_list, False
     def init_solve_column(column_index:int, unsolved_columns:set[int]) -> tuple[list[int],bool]:
         index_list = get_column_indexes(size, column_index)
         if not has_incomplete_tiles(get_values(index_list, tiles)):
-            unsolved_columns.add(column_index)
+            # unsolved_columns.add(column_index)
             return index_list, True
         return index_list, False
-    def finalize_solve(row_index:int, was_successful:bool, unsolved_rows:set[int], tiles_modified:list[int]) -> None:
-        if was_successful: unsolved_rows.discard(row_index)
-        else: unsolved_rows.add(row_index)
-        add_tiles_to_axes_to_solve(size, tiles_modified, rows_to_solve, columns_to_solve, rows_to_solve_local, columns_to_solve_local)
+    def finalize_solve(row_index:int, was_successful:bool, unsolved_axis:set[int], tiles_modified:list[int]) -> None:
+        if was_successful: unsolved_axis.discard(row_index)
+        # else: unsolved_axis.add(row_index)
+        add_tiles_to_axes_to_solve(size, tiles_modified, rows_to_solve, columns_to_solve, unsolved_rows, unsolved_columns)
     def got_desired_tile() -> bool:
         return was_successful and desired_tile_index is not None and len(tiles[desired_tile_index]) == 1
     
     def three_in_a_row() -> bool:
         did_something = False
-        for row_index in rows_to_solve_local:
+        for row_index in rows_to_solve:
             index_list, should_continue = init_solve_row(row_index, unsolved_rows)
             if should_continue: continue
             was_successful, tiles_modified = solve_three_in_a_row(colors, index_list, tiles, dependencies)
             if was_successful: did_something = True
             finalize_solve(row_index, was_successful, unsolved_rows, tiles_modified)
-        for column_index in columns_to_solve_local:
+        for column_index in columns_to_solve:
             index_list, should_continue = init_solve_column(column_index, unsolved_columns)
+            if should_continue: continue
             was_successful, tiles_modified = solve_three_in_a_row(colors, index_list, tiles, dependencies)
             if was_successful: did_something = True
             finalize_solve(column_index, was_successful, unsolved_columns, tiles_modified)
         return did_something
     def balancing() -> bool:
         did_something = False
-        for row_index in rows_to_solve_local:
+        for row_index in rows_to_solve:
             index_list, should_continue = init_solve_row(row_index, unsolved_rows)
             if should_continue: continue
             was_successful, tiles_modified = solve_balancing(size[0], colors, index_list, tiles, dependencies)
             if was_successful: did_something = True
-            else: unsolved_rows.add(row_index)
             finalize_solve(row_index, was_successful, unsolved_rows, tiles_modified)
-        for column_index in columns_to_solve_local:
+        for column_index in columns_to_solve:
             index_list, should_continue = init_solve_column(column_index, unsolved_columns)
+            if should_continue: continue
             was_successful, tiles_modified = solve_balancing(size[1], colors, index_list, tiles, dependencies)
             if was_successful: did_something = True
             finalize_solve(column_index, was_successful, unsolved_columns, tiles_modified)
         return did_something
     def balancing_possibilities() -> bool:
         did_something = False
-        for row_index in rows_to_solve_local:
+        for row_index in rows_to_solve:
             index_list, should_continue = init_solve_row(row_index, unsolved_rows)
             if should_continue: continue
             was_successful, tiles_modified = solve_balancing_possibilities(size[0], colors, index_list, tiles, dependencies)
             if was_successful: did_something = True
             finalize_solve(row_index, was_successful, unsolved_rows, tiles_modified)
-        for column_index in columns_to_solve_local:
+        for column_index in columns_to_solve:
             index_list, should_continue = init_solve_column(column_index, unsolved_columns)
             if should_continue: continue
             was_successful, tiles_modified = solve_balancing_possibilities(size[1], colors, index_list, tiles, dependencies)
@@ -331,17 +351,10 @@ def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_ti
             else: return False
         total_tries += 1
         did_something = False
-        # while len(rows_to_solve) != 0 and len(columns_to_solve) != 0:
-        rows_to_solve_copy = rows_to_solve[:]
-        columns_to_solve_copy = columns_to_solve[:]
-        rows_to_solve = []
-        columns_to_solve = []
         
-        rows_to_solve_local = rows_to_solve_copy[:]
-        columns_to_solve_local = columns_to_solve_copy[:]
-        while len(rows_to_solve_local) != 0 and len(columns_to_solve_local) != 0:
-            unsolved_rows:set[int] = set()
-            unsolved_columns:set[int] = set()
+        while len(rows_to_solve) != 0 or len(columns_to_solve) != 0:
+            unsolved_rows = set(rows_to_solve)
+            unsolved_columns = set(columns_to_solve)
             was_successful = three_in_a_row()
             if got_desired_tile(): return True
             if was_successful: did_something = True
@@ -352,10 +365,9 @@ def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_ti
                 was_successful = balancing_possibilities()
                 if got_desired_tile(): return True
                 if was_successful: did_something = True
-            for unsolved_row in unsolved_rows: rows_to_solve_local.remove(unsolved_row)
-            for unsolved_column in unsolved_columns: columns_to_solve_local.remove(unsolved_column)
-
-        if len(rows_to_solve) != 0 or len(columns_to_solve) != 0: continue
+            add_full_rows(tiles, size, rows_to_solve, columns_to_solve, unsolved_rows, unsolved_columns)
+            for unsolved_row in unsolved_rows: rows_to_solve.remove(unsolved_row)
+            for unsolved_column in unsolved_columns: columns_to_solve.remove(unsolved_column)
 
         # expensive rules go down here.
         
