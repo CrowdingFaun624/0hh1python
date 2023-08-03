@@ -1,7 +1,7 @@
 import math
+
 import pygame
 
-import Drawable
 import Colors
 import Utilities.Animations as Animations
 import Utilities.Bezier as Bezier
@@ -9,7 +9,7 @@ import Utilities.Bezier as Bezier
 LOCK_SHAKE_TIME = 0.5 # when locked tile is interacted with
 TRANSITION_TIME = 0.2 # from one color to another
 
-class Tile(Drawable.Drawable):
+class Tile():
     def __init__(self, index:int, size:int, value:int|list[int], is_even:bool, colors:int, current_time:float, start_progress:float=1.0, is_locked:bool=False) -> None:
         self.index = index
         self.size = size
@@ -91,9 +91,9 @@ class Tile(Drawable.Drawable):
         self.__get_rotation_loading(elapsed_time)
         return self.__get_surface_normal(elapsed_time)
 
-    def display(self, required_surface_conditions:list[any], current_time:float) -> pygame.Surface:
+    def display(self, required_surface_conditions:list[any], current_time:float, force_new:bool=False) -> pygame.Surface:
         # if self.index == 17: print(self.index, self.transition_progress)
-        if self.current_surface_conditions == required_surface_conditions:
+        if not force_new and self.current_surface_conditions == required_surface_conditions:
             return self.surface
         else:
             # print("%s got new pants" % self.index, self.current_surface_conditions, required_surface_conditions)
@@ -225,7 +225,7 @@ class Tile(Drawable.Drawable):
         button_surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
         circle_pos = self.__position(padding_size + border_radius, padding_size + border_radius)
         pygame.draw.circle(button_surface, color, circle_pos, border_radius, 0, *self.__get_circle_quarters(False, True, False, False))
-        circle_pos = self.__position(self.size - (padding_size + border_radius) + 1, padding_size + border_radius)
+        circle_pos = self.__position(self.size - (padding_size + border_radius), padding_size + border_radius)
         pygame.draw.circle(button_surface, color, circle_pos, border_radius, 0, *self.__get_circle_quarters(True, False, False, False))
         circle_pos = self.__position(padding_size + border_radius, self.size - (padding_size + border_radius))
         pygame.draw.circle(button_surface, color, circle_pos, border_radius, 0, *self.__get_circle_quarters(False, False, True, False))
