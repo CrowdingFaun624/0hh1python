@@ -4,9 +4,9 @@ import random
 from statistics import mean, median
 import time
 
-import Utilities.LevelCreator as LevelCreator
-import Utilities.LevelPrinter as LevelPrinter
-import Utilities.LevelSolver as LevelSolver
+import LevelCreator.LevelCreator as LevelCreator
+import LevelCreator.LevelPrinter as LevelPrinter
+import LevelCreator.LevelSolver as LevelSolver
 
 REPEAT_COUNT = {2: {4: 11815, 6: 2303, 8: 629, 10: 202, 12: 82, 14: 16, 16: 2},
                 3: {3: 13971, 6: 1251, 9: 142, 12: 2}} # will take 2 minutes and 40 seconds

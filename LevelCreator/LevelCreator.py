@@ -1,5 +1,6 @@
 import cProfile
 from math import ceil
+from numpy import base_repr, binary_repr
 import os
 import random
 import re
@@ -62,12 +63,7 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
             f.write(data_bytes)
 
     def int_to_string(number:int, base:int) -> str: # https://stackoverflow.com/questions/2267362/how-to-convert-an-integer-to-a-string-in-any-base
-        BASE_STRING = "0123456789"
-        result = ""
-        while number:
-            result += BASE_STRING[number % base]
-            number //= base
-        return result[::-1] or "0"
+        return binary_repr(number) if base == 2 else base_repr(number, base)
 
     def fetch_cache() -> list[list[int]]|None:
         path_name = "./_cache/solution_%s_%s.bin" % (size[0], colors)
