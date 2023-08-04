@@ -10,7 +10,7 @@ LOCK_SHAKE_TIME = 0.5 # when locked tile is interacted with
 TRANSITION_TIME = 0.2 # from one color to another
 
 class Tile():
-    def __init__(self, index:int, size:int, value:int|list[int], is_even:bool, colors:int, current_time:float, start_progress:float=1.0, is_locked:bool=False) -> None:
+    def __init__(self, index:int, size:int, value:int|list[int], is_even:bool, colors:int, current_time:float, start_progress:float=1.0, is_locked:bool=False, show_lock:bool=False, lock_surface:pygame.Surface|None=None) -> None:
         self.index = index
         self.size = size
         self.value = value
@@ -26,6 +26,8 @@ class Tile():
         self.previous_value:list[int]|int|None = list(range(1, self.colors + 1)) if colors > 2 else None
         self.is_mousing_over = False
         self.is_locked = is_locked
+        self.show_lock = False
+        self.lock_surface = lock_surface
         
         self.transition_progress = start_progress
         self.multicolor_brightness_progress = [0.0] * self.colors; self.multicolor_brightness_progress_eased = [0.0] * self.colors
@@ -48,6 +50,7 @@ class Tile():
         conditions:list[any] = []
         conditions.append(self.rotation)
         conditions.append(self.transition_progress)
+        conditions.append(self.show_lock)
         if time_since_mouse_over <= TRANSITION_TIME: conditions.append(time_since_mouse_over)
         if time_since_mouse_start <= TRANSITION_TIME: conditions.append(time_since_mouse_start)
         if time_since_click <= TRANSITION_TIME: conditions.append(time_since_click)
@@ -118,6 +121,15 @@ class Tile():
         if self.rotation != 0: return True, True, True, True
         else: return top_right, top_left, bottom_left, bottom_right
 
+    def __get_lock(self) -> tuple[pygame.Surface,tuple[int,int]]:
+        '''Returns the surface and position.'''
+        if self.rotation != 0:
+            lock_surface = pygame.transform.rotate(self.lock_surface, -math.degrees(self.rotation))
+        else: lock_surface = self.lock_surface
+        lock_size = lock_surface.get_size()
+        corner = (int((self.size - lock_size[0]) / 2), int((self.size - lock_size[1]) / 2))
+        return lock_surface, corner
+
     def __get_surface_normal(self, current_time) -> pygame.Surface:
         if self.click_type == "locked": color_ratio = 1.0
         else:
@@ -137,6 +149,9 @@ class Tile():
         button_surface = self.__draw_body(padding_size, border_radius, color)
         if self.value != 0:
             button_surface.blit(self.__draw_shadow(padding_size, shadow_radius), (0, 0))
+        if self.show_lock and self.lock_surface is not None:
+            lock_surface, position = self.__get_lock()
+            button_surface.blit(lock_surface, position)
         return button_surface
 
     def __get_surface_multicolor(self, current_time:float) -> pygame.Surface:
@@ -175,6 +190,9 @@ class Tile():
             button_surface = multicolor
         if len(self.value) == 1:
             button_surface.blit(self.__draw_shadow(padding_size, shadow_radius), (0, 0))
+        if self.show_lock and self.lock_surface is not None:
+            lock_surface, position = self.__get_lock()
+            button_surface.blit(lock_surface, position)
         return button_surface
 
     def __get_rotation(self, current_time:float, time:float) -> None:
