@@ -1,9 +1,9 @@
 import pygame
 
-import Colors
-import Drawable
-import Fonts.Fonts as Fonts
-import LevelSelector
+import UI.Colors as Colors
+import UI.Drawable as Drawable
+import UI.Fonts as Fonts
+import UI.LevelSelector as LevelSelector
 import Utilities.Animations as Animations
 import Utilities.Bezier as Bezier
 

@@ -1,5 +1,5 @@
 try:
-    import Utilities.LevelPrinter as LevelPrinter
+    import LevelCreator.LevelPrinter as LevelPrinter
 except ImportError:
     import LevelPrinter
 

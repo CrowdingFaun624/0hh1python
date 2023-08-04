@@ -2,11 +2,11 @@ import time
 
 import pygame
 
-import Board
-import Buttons.Tile as Tile
-import Colors
-import Drawable
-import Fonts.Fonts as Fonts
+import UI.Board as Board
+import UI.Tile as Tile
+import UI.Colors as Colors
+import UI.Drawable as Drawable
+import UI.Fonts as Fonts
 import Utilities.Bezier as Bezier
 
 LEVELS = {2: [4, 6, 8, 10, 12, 14, 16, 18, 20], 3: [3, 6, 9, 12]}

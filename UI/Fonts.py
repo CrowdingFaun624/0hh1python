@@ -2,8 +2,8 @@ import pygame.font
 
 pygame.font.init()
 
-JOSEFINE_FILE = "./Fonts/JosefinSans-Bold.ttf"
-MOLLE_FILE = "./Fonts/Molle-Regular.ttf"
+JOSEFINE_FILE = "./_fonts/JosefinSans-Bold.ttf"
+MOLLE_FILE = "./_fonts/Molle-Regular.ttf"
 
 fonts:dict[str,str] = {"josefin": JOSEFINE_FILE, "molle": MOLLE_FILE}
 

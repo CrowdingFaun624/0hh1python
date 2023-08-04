@@ -5,14 +5,14 @@ import time
 
 import pygame
 
-import Buttons.Tile as Tile
-import Colors
-import Drawable
-import Fonts.Fonts as Fonts
-import Textures
+import UI.Tile as Tile
+import UI.Colors as Colors
+import UI.Drawable as Drawable
+import UI.Fonts as Fonts
+import UI.Textures as Textures
 import Utilities.Bezier as Bezier
-import Utilities.LevelCreator as LevelCreator
-import Utilities.LevelPrinter as LevelPrinter
+import LevelCreator.LevelCreator as LevelCreator
+import LevelCreator.LevelPrinter as LevelPrinter
 
 CLICK_ACTION_LOCKED = "locked"
 CLICK_ACTION_SUCCESS = "success"

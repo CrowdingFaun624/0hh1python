@@ -2,7 +2,7 @@ import math
 
 import pygame
 
-import Colors
+import UI.Colors as Colors
 import Utilities.Animations as Animations
 import Utilities.Bezier as Bezier
 

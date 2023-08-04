@@ -5,8 +5,8 @@ import random
 import re
 
 try:
-    import Utilities.LevelPrinter as LevelPrinter
-    import Utilities.LevelSolver as LevelSolver
+    import LevelCreator.LevelPrinter as LevelPrinter
+    import LevelCreator.LevelSolver as LevelSolver
 except ImportError:
     import LevelPrinter
     import LevelSolver

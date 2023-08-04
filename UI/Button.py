@@ -1,6 +1,6 @@
 import pygame
 
-import Drawable
+import UI.Drawable as Drawable
 
 class Button(Drawable.Drawable):
     def __init__(self, surface:pygame.Surface=None, left_click_action:tuple[any,list[any],dict[str,any]]=None, right_click_action:tuple[any,list[any],dict[str,any]]=None) -> None:
