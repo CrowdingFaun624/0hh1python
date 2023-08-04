@@ -10,7 +10,7 @@ LOCK_SHAKE_TIME = 0.5 # when locked tile is interacted with
 TRANSITION_TIME = 0.2 # from one color to another
 
 class Tile():
-    def __init__(self, index:int, size:int, value:int|list[int], is_even:bool, colors:int, current_time:float, start_progress:float=1.0, is_locked:bool=False, show_lock:bool=False, lock_surface:pygame.Surface|None=None) -> None:
+    def __init__(self, index:int, size:int, value:int|list[int], is_even:bool, colors:int, current_time:float, start_progress:float=1.0, is_locked:bool=False, can_modify:bool=True, show_lock:bool=False, lock_surface:pygame.Surface|None=None) -> None:
         self.index = index
         self.size = size
         self.value = value
@@ -26,6 +26,7 @@ class Tile():
         self.previous_value:list[int]|int|None = list(range(1, self.colors + 1)) if colors > 2 else None
         self.is_mousing_over = False
         self.is_locked = is_locked
+        self.can_modify = can_modify
         self.show_lock = False
         self.lock_surface = lock_surface
         
