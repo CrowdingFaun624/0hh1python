@@ -29,6 +29,9 @@ class Tile():
         self.can_modify = can_modify
         self.show_lock = False
         self.lock_surface = lock_surface
+        self.highlight = False
+        self.highlight_time = None
+        self.highlight_opacity = None
         
         self.transition_progress = start_progress
         self.multicolor_brightness_progress = [0.0] * self.colors; self.multicolor_brightness_progress_eased = [0.0] * self.colors
@@ -37,7 +40,10 @@ class Tile():
         self.current_surface_conditions:list[any] = None
         self.last_tick_time = current_time
         self.rotation = 0.0
-        self.mask = self.__draw_body(0.04 * self.size, self.size * 0.1, pygame.Color(0, 0, 0)) # for multicolor
+        self.multicolor_mask = self.__get_multicolor_mask()
+        self.multicolor_mask_rotation = 0.0
+        self.highlight_mask = self.__get_highlight_mask()
+        self.highlight_mask_rotation = 0.0
 
     def tick(self, current_time:float) -> list[any]:
         '''Returns the conditions that the tile is in this frame.'''
@@ -52,6 +58,8 @@ class Tile():
         conditions.append(self.rotation)
         conditions.append(self.transition_progress)
         conditions.append(self.show_lock)
+        conditions.append(self.highlight)
+        conditions.append(self.highlight_opacity)
         if time_since_mouse_over <= TRANSITION_TIME: conditions.append(time_since_mouse_over)
         if time_since_mouse_start <= TRANSITION_TIME: conditions.append(time_since_mouse_start)
         if time_since_click <= TRANSITION_TIME: conditions.append(time_since_click)
@@ -90,7 +98,7 @@ class Tile():
                     self.multicolor_brightness_progress_eased[index] = Bezier.ease_out(0.0, 1.0, self.multicolor_brightness_progress[index])
                 case 1:
                     self.multicolor_brightness_progress_eased[index] = 1 - Bezier.ease_out(0.0, 1.0, 1 - self.multicolor_brightness_progress[index])
-
+    # TODO: put all of these advance functions into a class in another file and make everything use that instead.
     def display_loading(self, elapsed_time:float) -> pygame.Surface:
         self.__get_rotation_loading(elapsed_time)
         return self.__get_surface_normal(elapsed_time)
@@ -131,6 +139,12 @@ class Tile():
         corner = (int((self.size - lock_size[0]) / 2), int((self.size - lock_size[1]) / 2))
         return lock_surface, corner
 
+    def __get_highlight(self, current_time:float) -> pygame.Surface:
+        if self.highlight_mask_rotation != self.rotation: self.highlight_mask = self.__get_highlight_mask()
+        self.highlight_opacity = Animations.animate(Animations.flash, 2.0, Bezier.ease_in_out, current_time - self.highlight_time)
+        self.highlight_mask.set_alpha(self.highlight_opacity * 255)
+        return self.highlight_mask
+
     def __get_surface_normal(self, current_time) -> pygame.Surface:
         if self.click_type == "locked": color_ratio = 1.0
         else:
@@ -153,6 +167,8 @@ class Tile():
         if self.show_lock and self.lock_surface is not None:
             lock_surface, position = self.__get_lock()
             button_surface.blit(lock_surface, position)
+        if self.highlight:
+            button_surface.blit(self.__get_highlight(current_time), (0, 0))
         return button_surface
 
     def __get_surface_multicolor(self, current_time:float) -> pygame.Surface:
@@ -194,6 +210,8 @@ class Tile():
         if self.show_lock and self.lock_surface is not None:
             lock_surface, position = self.__get_lock()
             button_surface.blit(lock_surface, position)
+        if self.highlight:
+            button_surface.blit(self.__get_highlight(current_time), (0, 0))
         return button_surface
 
     def __get_rotation(self, current_time:float, time:float) -> None:
@@ -238,6 +256,38 @@ class Tile():
     def __get_tile_color(self, value:int|None=None) -> pygame.Color:
         value = self.value if value is None else value
         return Tile.COLORS[(value, self.is_even)]
+
+    def __get_multicolor_mask(self) -> pygame.Surface:
+        padding_size = 0.04 * self.size
+        border_radius = self.size * 0.1
+        mask = self.__draw_body(padding_size, border_radius, pygame.Color(0, 0, 0))
+        mask_inverted = pygame.Surface(mask.get_size(), pygame.SRCALPHA)
+        mask_inverted.fill(pygame.Color(255, 255, 255))
+        mask_inverted.blit(mask, (0, 0)) # TODO: cache mask_inverted too; make sure to copy though
+        mask_inverted.set_colorkey(pygame.Color(0, 0, 0))
+        return mask_inverted
+
+    def __get_highlight_mask(self) -> pygame.Surface:
+        padding_size = 0.04 * self.size
+        border_radius = self.size * 0.1
+        mask_surface = pygame.Surface((self.size, self.size))
+        mask_surface.fill((0, 0, 0))
+        base_surface = self.__draw_body(padding_size, border_radius, (255, 255, 255))
+        mask_surface.blit(base_surface, (0, 0))
+        if border_radius > 3: # rounded interior
+            interior_surface = self.__draw_body(padding_size + 3, border_radius, (0, 0, 0))
+        else: # square interior
+            interior_surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
+            polygon_sequence = [
+                self.__position(padding_size + 3, padding_size + 3),
+                self.__position(self.size - (padding_size + 3), padding_size + 3),
+                self.__position(self.size - (padding_size + 3), self.size - (padding_size + 3)),
+                self.__position(padding_size + 3, self.size - (padding_size + 3))
+            ]
+            pygame.draw.polygon(interior_surface, (0, 0, 0), polygon_sequence)
+        mask_surface.blit(interior_surface, (0, 0))
+        mask_surface.set_colorkey((0, 0, 0))
+        return mask_surface
 
     def __draw_body(self, padding_size:float, border_radius:float, color:pygame.Color) -> pygame.Surface:
         # ROUNDED BORDER
@@ -313,12 +363,9 @@ class Tile():
             x, y = next_x, next_y
         for x, y in line_endpoints:
             pygame.draw.line(button_surface, Colors.tile0, self.__position(center, center), self.__position(center + x, center + y), int(padding_size))
-            
-        mask_inverted = pygame.Surface(self.mask.get_size(), pygame.SRCALPHA)
-        mask_inverted.fill(pygame.Color(255, 255, 255))
-        mask_inverted.blit(self.mask, (0, 0)) # TODO: cache mask_inverted too; make sure to copy though
-        mask_inverted.set_colorkey(pygame.Color(0, 0, 0))
-        button_surface.blit(mask_inverted, (0, 0))
+        
+        if self.multicolor_mask_rotation != self.rotation: self.multicolor_mask = self.__get_multicolor_mask()
+        button_surface.blit(self.multicolor_mask, (0, 0))
         button_surface.set_colorkey(pygame.Color(255, 255, 255))
         output_surface = pygame.Surface(button_surface.get_size(), pygame.SRCALPHA)
         output_surface.blit(button_surface, (0, 0)) # get rid of mask color

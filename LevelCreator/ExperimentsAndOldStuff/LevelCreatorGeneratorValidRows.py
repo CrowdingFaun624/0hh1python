@@ -7,10 +7,10 @@ from statistics import mean, median
 import time
 
 try:
-    import LevelCreator.LevelPrinter as LevelPrinter
+    import LevelCreator.LevelUtilities as LU
     import LevelCreator.LevelSolver as LevelSolver
 except ImportError:
-    import LevelPrinter
+    import LevelUtilities
     import LevelSolver
 
 def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[int]:

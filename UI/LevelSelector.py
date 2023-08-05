@@ -130,7 +130,7 @@ class LevelSelector(Drawable.Drawable):
         if self.has_chosen_level and not self.has_returned_level:
             self.has_returned_level = True
             size, colors = self.board_settings
-            board_size = min(self.display_size[0], self.display_size[1], MAXIMUM_BOARD_SIZE)
+            board_size = min(self.display_size[0], self.display_size[1] * 0.75, MAXIMUM_BOARD_SIZE)
             corner = (int((self.display_size[0] - board_size) / 2), int((self.display_size[1] - board_size) / 2))
 
             return [(Board.Board(size, colors=colors, position=corner, pixel_size=board_size, restore_objects=[(self, 1)], window_size=self.display_size), -1)]

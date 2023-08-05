@@ -41,3 +41,4 @@ RESOLUTION = 16
 ease = prepare_curve(0.25, 0.1, 0.25, 1.0)
 ease_out = prepare_curve(0.0, 0.0, 0.58, 1.0)
 ease_in = prepare_curve(0.42, 0.0, 1.0, 1.0)
+ease_in_out = prepare_curve(0.42, 0.0, 0.59, 1.0)

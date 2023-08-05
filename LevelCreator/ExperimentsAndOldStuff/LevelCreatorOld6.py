@@ -5,10 +5,10 @@ import random
 import re
 
 try:
-    import LevelCreator.LevelPrinter as LevelPrinter
+    import LevelCreator.LevelUtilities as LU
     import LevelCreator.LevelSolver as LevelSolver
 except ImportError:
-    import LevelPrinter
+    import LevelUtilities
     import LevelSolver
 
 def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[int]:
@@ -274,8 +274,8 @@ if __name__ == "__main__":
     full, empty, other_data = generate(size, 889, colors=2)
 
     print("FULL:")
-    LevelPrinter.print_board(full, size)
+    LU.print_board(full, size)
     print("EMPTY:")
-    LevelPrinter.print_board(empty, size)
+    LU.print_board(empty, size)
 
 # TODO: generate solution: it may be possible to not generate the entire valid_rows list, but instead a small portion of it. The list may be expanded when it normally reshuffles the list.

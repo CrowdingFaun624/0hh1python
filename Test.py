@@ -5,7 +5,7 @@ from statistics import mean, median
 import time
 
 import LevelCreator.LevelCreator as LevelCreator
-import LevelCreator.LevelPrinter as LevelPrinter
+import LevelCreator.LevelUtilities as LU
 import LevelCreator.LevelSolver as LevelSolver
 
 REPEAT_COUNT = {2: {4: 11815, 6: 2303, 8: 629, 10: 202, 12: 82, 14: 16, 16: 2},
@@ -44,8 +44,8 @@ def test_a_lot() -> None:
         seed = random.randint(-2147483648, 2147483647)
         print(seed, pattern[index])
         full, empty, other_data = LevelCreator.generate(pattern[index], seed)
-        LevelPrinter.print_board(full, pattern[index])
-        LevelPrinter.print_board(empty, pattern[index])
+        LU.print_board(full, pattern[index])
+        LU.print_board(empty, pattern[index])
         print(other_data)
         print()
         index += 1
@@ -54,11 +54,11 @@ def test_a_lot() -> None:
 def time_test(specified_colors:list[int]|None=None) -> dict[int,dict[str,any]]:
     def raise_error(message:str) -> None:
         print("FULL:")
-        LevelPrinter.print_board(full, size)
+        LU.print_board(full, size)
         print("EMPTY:")
-        LevelPrinter.print_board(empty, size)
+        LU.print_board(empty, size)
         print("SOLVED:")
-        LevelPrinter.print_board(solved, size)
+        LU.print_board(solved, size)
         raise RuntimeError(message)
 
     SIZES = {2: [4, 6, 8, 10, 12, 14, 16], 3: [3, 6, 9, 12]}

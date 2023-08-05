@@ -6,7 +6,8 @@ import time
 import pygame
 
 import LevelCreator.LevelCreator as LevelCreator
-import LevelCreator.LevelPrinter as LevelPrinter
+import LevelCreator.LevelHinter as LevelHinter
+import LevelCreator.LevelUtilities as LU
 import UI.Button as Button
 import UI.Colors as Colors
 import UI.Drawable as Drawable
@@ -37,6 +38,7 @@ class Board(Drawable.Drawable):
         else:self.seed = seed
         self.size = size
         self.colors = colors
+
         self.__current_mouse_over:int = None
         self.show_locks = False # TODO: make this carry over between board instances.
         self.is_complete = False # used for locking all of the tiles
@@ -45,6 +47,9 @@ class Board(Drawable.Drawable):
         self.is_finished_loading = False
         self.window_size = window_size
         self.buttons = []
+        self.hint_tiles:list[int] = []
+        self.is_hinting = False
+
         generation_thread = threading.Thread(target=self.get_board_from_seed)
         generation_thread.start()
         self.summoned_buttons = False
@@ -176,6 +181,17 @@ class Board(Drawable.Drawable):
     def tile_is_empty(self, tile) -> bool:
         if tile == 0: return True
         elif isinstance(tile, list): return len(tile) == self.colors
+    
+    def highlight(self, tiles_indexes:list[int]) -> None:
+        self.is_hinting = True
+        current_time = time.time()
+        for tile_index in tiles_indexes:
+            self.tiles[tile_index].highlight = True
+            self.tiles[tile_index].highlight_time = current_time
+    def unhighlight(self) -> None:
+        self.is_hinting = False
+        for tile in self.tiles:
+            tile.highlight = False
 
     def update_locks(self) -> None:
         '''Will show/hide locks on tiles that were in the starting board.'''
@@ -184,11 +200,18 @@ class Board(Drawable.Drawable):
                 self.tiles[index].show_lock = self.show_locks
 
     def mark_as_complete(self) -> None:
-        self.is_complete = True
-        self.completion_time = time.time()
-        for button in self.buttons: button.enabled = False
-        for tile in self.tiles:
-            tile.can_modify = False
+        self.unhighlight()
+        expanded_player_board = LU.expand_board(self.colors, self.player_board) if isinstance(self.player_board[0], int) else self.player_board
+        expanded_full_board = LU.expand_board(self.colors, self.full_board) if isinstance(self.full_board[0], int) else self.full_board
+        if LU.boards_match(expanded_player_board, expanded_full_board):
+            self.is_complete = True
+            self.completion_time = time.time()
+            for button in self.buttons: button.enabled = False
+            for tile in self.tiles:
+                tile.can_modify = False
+        else:
+            tile_indexes = LU.get_not_matching_tiles(expanded_player_board, expanded_full_board)
+            self.highlight(tile_indexes)
 
     def button_close(self) -> None:
         self.close_time = time.time()
@@ -196,6 +219,17 @@ class Board(Drawable.Drawable):
         for button in self.buttons: button.enabled = False
         for tile in self.tiles:
             tile.can_modify = False
+
+    def button_hint(self) -> None:
+        if self.is_hinting:
+            self.unhighlight()
+        else:
+            self.unhighlight()
+            hint = LevelHinter.get_hint(self.size, self.colors, self.player_board, self.full_board)
+            print(hint.type, hint.tiles_affected, hint.target_tile)
+            tile_indexes = hint.tiles_affected
+            if isinstance(hint.target_tile, int): tile_indexes.append(hint.target_tile)
+            self.highlight(tile_indexes)
 
     def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> list[tuple[Drawable.Drawable]]|None:
         def get_relative_mouse_position(position:tuple[float,float]|None=None) -> tuple[float,float]:
@@ -233,6 +267,7 @@ class Board(Drawable.Drawable):
                 current_value = current_value % (self.colors + 1)
                 self.player_board[index] = current_value
                 self.tiles[index].value = current_value
+                self.unhighlight()
                 if 0 not in self.player_board: self.mark_as_complete()
             else:
                 self.tiles[index].previous_value = self.player_board[index][:]
@@ -242,6 +277,7 @@ class Board(Drawable.Drawable):
                 center_y = (tile_y + 0.5) * self.display_size
                 direction = math.atan2(y - center_y, x - center_x) + (math.pi / 2) + (math.pi / self.colors) # in radians; clockwise; starts at left side and goes up; ends at 2pi
                 section = (int(direction // (math.tau / self.colors)) % self.colors) + 1
+                self.unhighlight()
                 if event.__dict__["button"] != 3:
                     if section in self.player_board[index]:
                         self.player_board[index].remove(section)
@@ -282,10 +318,6 @@ class Board(Drawable.Drawable):
                 self.tiles[self.__current_mouse_over].is_mousing_over = False
             self.__current_mouse_over = None
         
-        TYPES = {
-            pygame.MOUSEBUTTONDOWN: mouse_button_down,
-            pygame.MOUSEMOTION: mouse_motion
-        }
         for event in events:
             match event.type:
                 case pygame.MOUSEBUTTONDOWN: mouse_button_down()
@@ -302,9 +334,15 @@ class Board(Drawable.Drawable):
             self.should_destroy = True
             for button in self.buttons:
                 button.should_destroy = True
+        def scale_texture(surface:pygame.Surface) -> pygame.Surface:
+            return pygame.transform.scale_by(surface, self.window_size[1] / 900)
         if self.is_finished_loading and not self.summoned_buttons:
             self.summoned_buttons = True
-            buttons = [Button.Button(Textures.textures["close.png"], screen_position, None, (self.button_close,))]
+            buttons = [
+                Button.Button(scale_texture(Textures.textures["close.png"]), screen_position, None, (self.button_close,)),
+                Button.Button(scale_texture(Textures.textures["eye.png"]), screen_position, None, (self.button_hint,))
+                ]
+
             sum_of_button_width = sum((button.surface.get_size()[0] for button in buttons))
             spacing = (self.pixel_size - sum_of_button_width) / (len(buttons) + 1)
             x = screen_position[0]

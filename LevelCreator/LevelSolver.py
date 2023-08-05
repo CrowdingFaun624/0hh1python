@@ -1,53 +1,26 @@
 try:
-    import LevelCreator.LevelPrinter as LevelPrinter
+    import LevelCreator.LevelUtilities as LU
 except ImportError:
-    import LevelPrinter
+    import LevelUtilities as LU
 
-# TILE UTILITIES
-
-def get_row_indexes(size:tuple[int,int], y_position:int) -> list[int]:
-    '''Returns a list of indexes in the row.'''
-    return list(range(y_position * size[0], (y_position + 1) * size[0]))
-def get_column_indexes(size:tuple[int,int], x_position:int) -> list[int]:
-    '''Returns a list of indexes in the column.'''
-    return list(range(x_position, size[0] * size[1], size[0]))
-def get_values(indexes:list[int], tiles:list[list[int]]) -> list[list[int]]:
-    '''Gets the values of a list of indexes.'''
-    return [tiles[index] for index in indexes]
-def count_complete_tiles(tiles:list[list[int]]) -> int:
-    '''Returns the number of tiles whose values are completely known.'''
-    return [len(tile) == 1 for tile in tiles].count(True)
-def has_incomplete_tiles(tiles:list[list[int]]) -> bool: # TODO: check the performance of this vs `count_complete_tiles`
-    for tile in tiles:
-        if len(tile) != 1: return True
-    else: return False
-def has_complete_tiles(tiles:list[list[int]]) -> bool:
-    for tile in tiles:
-        if len(tile) == 1: return True
-    else: return False
-def get_incomplete_tile_indexes(index_list:list[int], tiles:list[list[int]]) -> list[int]:
-    '''Returns tiles in the index list whose values are not compeltely known.'''
-    return [tile_index for tile_index in index_list if len(tiles[tile_index]) != 1]
-def get_incomplete_tile_indexes_within(index_list:list[int], tiles:list[list[int]]) -> list[int]:
-    '''Returns position of tile within the index list (not index within `tiles`) from tiles in the index list whose values are not compeltely known.'''
-    return [index for index, tile_index in enumerate(index_list) if len(tiles[tile_index]) != 1]
+RETURN_NOW = "RETURN NOW"
 
 # SOLVE UTILITIES
 
 def get_rows_to_solve(size:tuple[int,int], tiles:list[list[int]]) -> list[int]:
     '''Returns the row indexes that contain at least one non-complete tile.'''
-    return [row_index for row_index in range(size[1]) if has_incomplete_tiles(values := get_values(get_row_indexes(size, row_index), tiles)) and has_complete_tiles(values)]
+    return [row_index for row_index in range(size[1]) if LU.has_incomplete_tiles(values := LU.get_values(LU.get_row_indexes(size, row_index), tiles)) and LU.has_complete_tiles(values)]
 def get_columns_to_solve(size:tuple[int,int], tiles:list[list[int]]) -> list[int]:
     '''Returns the column indexes that contain at least one non-complete tile.'''
-    return [column_index for column_index in range(size[1]) if has_incomplete_tiles(values := get_values(get_column_indexes(size, column_index), tiles)) and has_complete_tiles(values)]
+    return [column_index for column_index in range(size[1]) if LU.has_incomplete_tiles(values := LU.get_values(LU.get_column_indexes(size, column_index), tiles)) and LU.has_complete_tiles(values)]
 
 def add_full_rows(tiles:list[list[int]], size:tuple[int,int], rows_to_solve:list[int], columns_to_solve:list[int], unsolved_rows:set[int], unsolved_columns:set[int]) -> None:
     for row_index in rows_to_solve:
-        values = get_values(get_row_indexes(size, row_index), tiles)
-        if not has_incomplete_tiles(values): unsolved_rows.add(row_index)
+        values = LU.get_values(LU.get_row_indexes(size, row_index), tiles)
+        if not LU.has_incomplete_tiles(values): unsolved_rows.add(row_index)
     for column_index in columns_to_solve:
-        values = get_values(get_column_indexes(size, column_index), tiles)
-        if not has_incomplete_tiles(values): unsolved_columns.add(column_index)
+        values = LU.get_values(LU.get_column_indexes(size, column_index), tiles)
+        if not LU.has_incomplete_tiles(values): unsolved_columns.add(column_index)
 
 def add_tiles_to_axes_to_solve(size, tiles_modified:list[int], rows_to_solve:list[int], columns_to_solve:list[int], unsolved_rows:set[int]|None, unsolved_columns:set[int]|None) -> None:
     '''Appends to rows_to_solve and columns_to_solve using the modified tiles.'''
@@ -119,7 +92,7 @@ def solve_balancing(size:int, colors:int, indexes:list[int], tiles:list[list[int
                 was_successful = True
         return was_successful
 
-    values = get_values(indexes, tiles)
+    values = LU.get_values(indexes, tiles)
     max_per_row = size // colors
     did_something = False
     tiles_modified:list[int] = []
@@ -151,9 +124,9 @@ def solve_cloning(size:tuple[int,int], tiles:list[list[int]], dependencies:list[
     tiles_modified:list[int] = []
     # FIND ROWS
     for row_y in range(size[1]):
-        row_indexes = get_row_indexes(size, row_y)
-        unknown_tiles = get_incomplete_tile_indexes_within(row_indexes, tiles) # index within row of unknown tiles
-        row_values = get_values(row_indexes, tiles)[:]
+        row_indexes = LU.get_row_indexes(size, row_y)
+        unknown_tiles = LU.get_incomplete_tile_indexes_within(row_indexes, tiles) # index within row of unknown tiles
+        row_values = LU.get_values(row_indexes, tiles)[:]
         match len(unknown_tiles):
             case 2:
                 tile1, tile2 = unknown_tiles
@@ -171,7 +144,7 @@ def solve_cloning(size:tuple[int,int], tiles:list[list[int]], dependencies:list[
                 full_rows_y.append(row_y)
     # SOLVE ROWS
     for index, full_row_y in enumerate(full_rows_y): # TODO: redo this to iterate over the empty rows/columns instead and measure performance.
-        full_row_indexes = get_row_indexes(size, full_row_y)
+        full_row_indexes = LU.get_row_indexes(size, full_row_y)
         # row_values = get_values(full_row_indexes, tiles)
         row_values = full_rows_values[index]
         if row_values not in missing_two_tiles_rows: continue
@@ -183,7 +156,7 @@ def solve_cloning(size:tuple[int,int], tiles:list[list[int]], dependencies:list[
         empty_index1 = x1 + y * size[0]; empty_index2 = x2 + y * size[0]
         tiles[empty_index1].remove(tile1_not)
         tiles[empty_index2].remove(tile2_not)
-        empty_row_indexes = get_row_indexes(size, y)
+        empty_row_indexes = LU.get_row_indexes(size, y)
         if dependencies is not None: apply_dependencies(empty_row_indexes, full_row_indexes, empty_index1, empty_index2)
         was_successful = True
         if empty_index1 not in tiles_modified: tiles_modified.append(empty_index1)
@@ -195,9 +168,9 @@ def solve_cloning(size:tuple[int,int], tiles:list[list[int]], dependencies:list[
     full_columns_x:list[int] = []
     full_columns_values:list[list[list[int]]] = []
     for column_x in range(size[0]):
-        column_indexes = get_column_indexes(size, column_x)
-        unknown_tiles = get_incomplete_tile_indexes_within(column_indexes, tiles) # index within column of unknown tiles
-        column_values = get_values(column_indexes, tiles)[:]
+        column_indexes = LU.get_column_indexes(size, column_x)
+        unknown_tiles = LU.get_incomplete_tile_indexes_within(column_indexes, tiles) # index within column of unknown tiles
+        column_values = LU.get_values(column_indexes, tiles)[:]
         match len(unknown_tiles):
             case 2:
                 tile1, tile2 = unknown_tiles
@@ -215,7 +188,7 @@ def solve_cloning(size:tuple[int,int], tiles:list[list[int]], dependencies:list[
                 full_columns_x.append(column_x)
     # SOLVE COLUMNS
     for index, full_column_x in enumerate(full_columns_x):
-        full_column_indexes = get_column_indexes(size, full_column_x)
+        full_column_indexes = LU.get_column_indexes(size, full_column_x)
         # column_values = get_values(full_column_indexes, tiles)
         column_values = full_columns_values[index]
         if column_values not in missing_two_tiles_columns: continue
@@ -227,7 +200,7 @@ def solve_cloning(size:tuple[int,int], tiles:list[list[int]], dependencies:list[
         empty_index1 = x + y1 * size[0]; empty_index2 = x + y2 * size[0]
         tiles[empty_index1].remove(tile1_not)
         tiles[empty_index2].remove(tile2_not)
-        empty_column_indexes = get_column_indexes(size, x)
+        empty_column_indexes = LU.get_column_indexes(size, x)
         if dependencies is not None: apply_dependencies(empty_column_indexes, full_column_indexes, empty_index1, empty_index2)
         was_successful = True
         if empty_index1 not in tiles_modified: tiles_modified.append(empty_index1)
@@ -268,23 +241,23 @@ def solve_balancing_possibilities(size:int, colors:int, indexes:list[int], tiles
             if max_per_row <= 2: break
     return was_successful, tiles_modified
 
-def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_tile_index:int|None=None, dependencies:list[list[int]]|None=None, error_on_failure:bool=False) -> bool:
-    '''Solves a board, and returns the tiles list. If `desired_tile_index` is specified, it will break early.
+def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_tile_index:int|None=None, dependencies:list[list[int]]|None=None, error_on_failure:bool=False, return_on_find:bool=False) -> bool|int:
+    '''Solves a board, and returns the tiles list. If `desired_tile_index` is specified or `return_on_find` is True, it will break early.
     If `dependencies` is specified, it will extend items of the list with the tiles required to find them. Returns
     if it was able to find the desired tile or not.'''
     if isinstance(size, int): size = (size, size)
     rows_to_solve = get_rows_to_solve(size, tiles)
     columns_to_solve = get_columns_to_solve(size, tiles)
-    def init_solve_row(row_index:int, unsolved_rows:set[int]) -> tuple[list[int],bool]:
+    def init_solve_row(row_index:int) -> tuple[list[int],bool]:
         '''Initializing stuff within a for loop. Returns the index list and if it should continue or not.'''
-        index_list = get_row_indexes(size, row_index)
-        if not has_incomplete_tiles(get_values(index_list, tiles)):
+        index_list = LU.get_row_indexes(size, row_index)
+        if not LU.has_incomplete_tiles(LU.get_values(index_list, tiles)):
             # unsolved_rows.add(row_index)
             return index_list, True
         return index_list, False
-    def init_solve_column(column_index:int, unsolved_columns:set[int]) -> tuple[list[int],bool]:
-        index_list = get_column_indexes(size, column_index)
-        if not has_incomplete_tiles(get_values(index_list, tiles)):
+    def init_solve_column(column_index:int) -> tuple[list[int],bool]:
+        index_list = LU.get_column_indexes(size, column_index)
+        if not LU.has_incomplete_tiles(LU.get_values(index_list, tiles)):
             # unsolved_columns.add(column_index)
             return index_list, True
         return index_list, False
@@ -295,58 +268,67 @@ def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_ti
     def got_desired_tile() -> bool:
         return was_successful and desired_tile_index is not None and len(tiles[desired_tile_index]) == 1
     
-    def three_in_a_row() -> bool:
+    def three_in_a_row() -> tuple[bool,None|int]:
         did_something = False
+        tiles_modified = []
         for row_index in rows_to_solve:
-            index_list, should_continue = init_solve_row(row_index, unsolved_rows)
+            index_list, should_continue = init_solve_row(row_index)
             if should_continue: continue
             was_successful, tiles_modified = solve_three_in_a_row(colors, index_list, tiles, dependencies)
             if was_successful: did_something = True
+            if return_on_find and was_successful: return did_something, tiles_modified[0]
             finalize_solve(row_index, was_successful, unsolved_rows, tiles_modified)
         for column_index in columns_to_solve:
-            index_list, should_continue = init_solve_column(column_index, unsolved_columns)
+            index_list, should_continue = init_solve_column(column_index)
             if should_continue: continue
             was_successful, tiles_modified = solve_three_in_a_row(colors, index_list, tiles, dependencies)
             if was_successful: did_something = True
+            if return_on_find and was_successful: return did_something, tiles_modified[0]
             finalize_solve(column_index, was_successful, unsolved_columns, tiles_modified)
-        return did_something
-    def balancing() -> bool:
+        return did_something, None
+    def balancing() -> tuple[bool,None|int]:
         did_something = False
+        tiles_modified = []
         for row_index in rows_to_solve:
-            index_list, should_continue = init_solve_row(row_index, unsolved_rows)
+            index_list, should_continue = init_solve_row(row_index)
             if should_continue: continue
             was_successful, tiles_modified = solve_balancing(size[0], colors, index_list, tiles, dependencies)
             if was_successful: did_something = True
+            if return_on_find and was_successful: return did_something, tiles_modified[0]
             finalize_solve(row_index, was_successful, unsolved_rows, tiles_modified)
         for column_index in columns_to_solve:
-            index_list, should_continue = init_solve_column(column_index, unsolved_columns)
+            index_list, should_continue = init_solve_column(column_index)
             if should_continue: continue
             was_successful, tiles_modified = solve_balancing(size[1], colors, index_list, tiles, dependencies)
             if was_successful: did_something = True
+            if return_on_find and was_successful: return did_something, tiles_modified[0]
             finalize_solve(column_index, was_successful, unsolved_columns, tiles_modified)
-        return did_something
-    def balancing_possibilities() -> bool:
+        return did_something, None
+    def balancing_possibilities() -> tuple[bool,None|int]:
         did_something = False
+        tiles_modified = []
         for row_index in rows_to_solve:
-            index_list, should_continue = init_solve_row(row_index, unsolved_rows)
+            index_list, should_continue = init_solve_row(row_index)
             if should_continue: continue
             was_successful, tiles_modified = solve_balancing_possibilities(size[0], colors, index_list, tiles, dependencies)
             if was_successful: did_something = True
+            if return_on_find and was_successful: return did_something, tiles_modified[0]
             finalize_solve(row_index, was_successful, unsolved_rows, tiles_modified)
         for column_index in columns_to_solve:
-            index_list, should_continue = init_solve_column(column_index, unsolved_columns)
+            index_list, should_continue = init_solve_column(column_index)
             if should_continue: continue
             was_successful, tiles_modified = solve_balancing_possibilities(size[1], colors, index_list, tiles, dependencies)
             if was_successful: did_something = True
+            if return_on_find and was_successful: return did_something, tiles_modified[0]
             finalize_solve(column_index, was_successful, unsolved_columns, tiles_modified)
-        return did_something
+        return did_something, None
 
     total_tries = 0
-    while has_incomplete_tiles(tiles):
+    while LU.has_incomplete_tiles(tiles):
         # LevelPrinter.print_board(tiles, size)
         if total_tries != 0 and not did_something:
             if error_on_failure:
-                LevelPrinter.print_board(tiles, size)
+                LU.print_board(tiles, size)
                 raise RuntimeError("Failed to solve board!")
             else: return False
         total_tries += 1
@@ -355,14 +337,17 @@ def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_ti
         while len(rows_to_solve) != 0 or len(columns_to_solve) != 0:
             unsolved_rows = set(rows_to_solve)
             unsolved_columns = set(columns_to_solve)
-            was_successful = three_in_a_row()
+            was_successful, return_now_value = three_in_a_row()
+            if return_now_value is not None: return return_now_value
             if got_desired_tile(): return True
             if was_successful: did_something = True
-            was_successful = balancing()
+            was_successful, return_now_value = balancing()
+            if return_now_value is not None: return return_now_value
             if got_desired_tile(): return True
             if was_successful: did_something = True
             if colors != 2:
-                was_successful = balancing_possibilities()
+                was_successful, return_now_value = balancing_possibilities()
+                if return_now_value is not None: return return_now_value
                 if got_desired_tile(): return True
                 if was_successful: did_something = True
             add_full_rows(tiles, size, rows_to_solve, columns_to_solve, unsolved_rows, unsolved_columns)
@@ -374,8 +359,9 @@ def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_ti
         # CLONING
 
         was_successful, tiles_modified = solve_cloning(size, tiles, dependencies)
+        if return_on_find and len(tiles_modified) > 0: return tiles_modified[0]
         if was_successful: did_something = True
-        if was_successful and desired_tile_index is not None and len(tiles[desired_tile_index]) == 1: return True
+        if got_desired_tile(): return True
         add_tiles_to_axes_to_solve(size, tiles_modified, rows_to_solve, columns_to_solve, None, None)
     if desired_tile_index is not None: return len(tiles[desired_tile_index]) == 1
 
@@ -425,12 +411,17 @@ if __name__ == "__main__":
     size = (6, 6)
     colors = 3
 
-    LevelPrinter.print_board(tiles, 6)
+    LU.print_board(tiles, 6)
     print(tiles)
     dependencies = [[] for i in range(size[0] * size[1])]
     solve(size, colors, tiles, None, dependencies)
-    LevelPrinter.print_board(tiles, 6)
+    LU.print_board(tiles, 6)
     print(tiles)
     print(dependencies)
 
 # TODO: replace shit with sets and see if it's faster.
+
+# TODO: create rule 4 algorithm: if the row contains the same amount of reds missing and blues missing, return without doing anything.
+# Otherwise, for each empty tile, do the following: place the less common color there. Then for each other tile, place the more common color by default,
+# but place the less common color if there would be a three-in-a-row error otherwise. If the number of additional less common tiles exceeds that color's
+# original missing count, then the placed tile is not the less common color.

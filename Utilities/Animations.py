@@ -26,6 +26,12 @@ subtle_hint = { # y position (%)
     1.0: 0.0
 }
 
+flash = { # opacity
+    0.0: 0.3,
+    0.5: 1.0,
+    1.0: 0.3
+}
+
 def animate(animation:dict[float,float], duration:float, bezier_function:Callable[[float,float,float],float], time:float, infinite:bool=False) -> float:
     time = time % duration
     time_fraction = time / duration
