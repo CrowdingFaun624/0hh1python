@@ -52,6 +52,11 @@ class Board(Drawable.Drawable):
         self.buttons = []
         self.hint_tiles:list[int] = []
         self.is_hinting = False
+        self.history:list[tuple[int,int|list[int],int|list[int]]] = []
+        # self.history is (index, value_set_to, previous_value)
+        self.player_board_is_full = False
+        self.player_board_fill_time = None
+        self.marked_as_complete = False
 
         generation_thread = threading.Thread(target=self.get_board_from_seed)
         generation_thread.start()
@@ -175,6 +180,7 @@ class Board(Drawable.Drawable):
                 self.tiles[index].show_lock = self.show_locks
 
     def mark_as_complete(self) -> None:
+        self.marked_as_complete = True
         self.unhighlight()
         expanded_player_board = LU.expand_board(self.colors, self.player_board) if isinstance(self.player_board[0], int) else self.player_board
         expanded_full_board = LU.expand_board(self.colors, self.full_board) if isinstance(self.full_board[0], int) else self.full_board
@@ -192,6 +198,22 @@ class Board(Drawable.Drawable):
         for button in self.buttons: button.enabled = False
         for tile in self.tiles:
             tile.can_modify = False
+
+    def button_undo(self) -> None:
+        if len(self.history) == 0: return
+        self.unhighlight()
+        index, post, pre = self.history.pop()
+        if self.colors == 2:
+            self.player_board[index] = pre
+            self.tiles[index].set_value(pre)
+        else:
+            for color in post:
+                if color not in pre:
+                    self.tiles[index].set_value_multi(color, False)
+            for color in pre:
+                if color not in post:
+                    self.tiles[index].set_value_multi(color, True)
+        self.tiles[index].highlight(time.time())
 
     def button_hint(self) -> None:
         if self.is_hinting:
@@ -235,14 +257,16 @@ class Board(Drawable.Drawable):
             if self.colors == 2:
                 current_value = self.player_board[index]
                 self.tiles[index].previous_value = current_value
-                current_value += up_values[event.__dict__["button"]]
-                current_value = current_value % (self.colors + 1)
-                self.player_board[index] = current_value
-                self.tiles[index].set_value(current_value)
+                next_value = current_value + up_values[event.__dict__["button"]]
+                next_value = next_value % (self.colors + 1)
+                self.player_board[index] = next_value
+                self.tiles[index].set_value(next_value)
+                self.history.append((index, next_value, current_value))
                 self.unhighlight()
-                if 0 not in self.player_board: self.mark_as_complete()
+                self.player_board_is_full = 0 not in self.player_board
             else:
-                self.tiles[index].previous_value = self.player_board[index][:]
+                previous_value = self.player_board[index][:]
+                self.tiles[index].previous_value = previous_value
                 x, y = get_relative_mouse_position()
                 tile_x = index % self.size[0]; tile_y = index // self.size[0]
                 center_x = (tile_x + 0.5) * self.display_size
@@ -252,20 +276,18 @@ class Board(Drawable.Drawable):
                 self.unhighlight()
                 if not self.tiles[index].can_modify: return
                 if event.__dict__["button"] != 3:
-                    is_insertion = section not in self.player_board[index]
-                    self.tiles[index].set_value_multi(section, is_insertion)
-                    if is_insertion: self.player_board[index].sort() # so it is recognized correctly as DEFAULT
-                    self.tiles[index].click_time_sections[section - 1] = time.time()
+                    self.tiles[index].set_value_multi(section, section not in self.player_board[index])
                 else:
                     if section not in self.player_board[index]:
                         self.tiles[index].set_value_multi(section, True)
-                        self.tiles[index].click_time_sections[section - 1] = time.time()
                     for color in range(self.colors):
                         if color == section - 1: continue
                         if color + 1 in self.player_board[index]:
                             self.tiles[index].set_value_multi(color + 1, False)
-                            self.tiles[index].click_time_sections[color] = time.time()
-                if False not in [len(tile) == 1 for tile in self.player_board]: self.mark_as_complete()
+                self.player_board_is_full = False not in [len(tile) == 1 for tile in self.player_board]
+                self.history.append((index, self.player_board[index][:], previous_value))
+            if self.player_board_is_full: self.player_board_fill_time = time.time()
+            self.marked_as_complete = False
 
         def mouse_motion() -> None:
             index = get_index()
@@ -307,10 +329,14 @@ class Board(Drawable.Drawable):
         #         button.should_destroy = True
         def scale_texture(surface:pygame.Surface) -> pygame.Surface:
             return pygame.transform.scale_by(surface, self.window_size[1] / 900)
+        # if self.player_board_fill_time is not None: print(current_time - self.player_board_fill_time)
+        if self.player_board_is_full and not self.marked_as_complete and current_time - self.player_board_fill_time >= COMPLETION_WAIT_TIME:
+            self.mark_as_complete()
         if self.is_finished_loading and not self.summoned_buttons:
             self.summoned_buttons = True
             buttons = [
                 Button.Button(scale_texture(Textures.textures["close.png"]), screen_position, None, (self.button_close,)),
+                Button.Button(scale_texture(Textures.textures["history.png"]), screen_position, None, (self.button_undo,)),
                 Button.Button(scale_texture(Textures.textures["eye.png"]), screen_position, None, (self.button_hint,))
                 ]
 

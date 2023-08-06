@@ -35,7 +35,6 @@ class Tile():
             current_color = COLORS[(value, is_even)]
         else:
             current_color = COLORS[(value[0], is_even)] if len(value) == 1 else COLORS[(0, is_even)]
-            self.click_time_sections:list[float] = [0.0] * self.colors
             self.section_opacities:list[Animation.Animation] = [Animation.Animation(cur := (self.get_section_opacity(color) if color in value else 0.0), cur, TRANSITION_TIME, Bezier.ease_out) for color in range(1, colors + 1)]
             self.multicolor_transition = Animation.Animation(float(self.is_locked), float(self.is_locked), TRANSITION_TIME, Bezier.ease_out)
         color_tuple = (current_color.r, current_color.g, current_color.b)
@@ -76,6 +75,7 @@ class Tile():
         if value:
             if color not in self.value:
                 self.value.append(color)
+                self.value.sort()
         else:
             if color in self.value:
                 self.value.remove(color)
@@ -83,6 +83,9 @@ class Tile():
             self.section_opacities[section].set(self.get_section_opacity(section + 1))
         if len(self.value) == 1: self.multicolor_transition.set(1.0)
         else: self.multicolor_transition.set(0.0)
+        if len(self.value) == 1: current_color = COLORS[(self.value[0], self.is_even)]
+        else: current_color = COLORS[(0, self.is_even)]
+        self.color.set((current_color.r, current_color.g, current_color.b))
     
     def highlight(self, current_time:float) -> None:
         self.is_highlighted = True
@@ -132,7 +135,7 @@ class Tile():
         if not force_new and self.current_surface_conditions == required_surface_conditions:
             return self.surface
         else:
-            # print("%s got new pants" % self.index, self.current_surface_conditions, required_surface_conditions)
+            print("%s got new pants" % self.index, self.current_surface_conditions, required_surface_conditions)
             new_surface = self.get_new_surface(current_time)
             self.surface = new_surface
             self.current_surface_conditions = required_surface_conditions
@@ -194,15 +197,17 @@ class Tile():
         def get_multicolor() -> pygame.Surface:
             return self.__draw_multicolor(padding_size, self.colors, current_time)
         def get_full_color(value:int, previous_value:int, click_time:float|None=None) -> pygame.Surface:
-            if click_time is None: click_time = self.click_time
-            if self.click_type == "locked": color_ratio = 1.0
-            else:
-                if previous_value is None or current_time - click_time > TRANSITION_TIME:
-                    color_ratio = 1.0
-                else: color_ratio = self.__get_color_ratio(current_time, TRANSITION_TIME, click_time)
-            current_color = self.__get_tile_color(value)
-            previous_color = self.__get_tile_color(previous_value)
-            color = self.__blend_colors(current_color, previous_color, color_ratio)
+            # if click_time is None: click_time = self.click_time
+            # if self.click_type == "locked": color_ratio = 1.0
+            # else:
+            #     if previous_value is None or current_time - click_time > TRANSITION_TIME:
+            #         color_ratio = 1.0
+            #     else: color_ratio = self.__get_color_ratio(current_time, TRANSITION_TIME, click_time)
+            # current_color = self.__get_tile_color(value)
+            # previous_color = self.__get_tile_color(previous_value)
+            # color = self.__blend_colors(current_color, previous_color, color_ratio)
+            color = self.color.get(current_time)
+            color = pygame.Color(int(color[0]), int(color[1]), int(color[2]))
             return self.__draw_body(padding_size, border_radius, color)
 
         def single_color_to_int(tile:list[int]) -> int:
