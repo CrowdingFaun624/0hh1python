@@ -1,3 +1,4 @@
+import collections
 import os
 import random
 import re
@@ -8,18 +9,19 @@ from numpy import base_repr, binary_repr
 try:
     import LevelCreator.LevelUtilities as LU
 except ImportError:
-    import LevelUtilities
+    import LevelUtilities as LU
 
 def grid_is_valid(size:tuple[int,int], colors:int, y_position:int, max_per_column:int, tiles:list[int], is_final:bool) -> bool:
-    already_columns:list[str] = []
+    already_columns:list[list[int]] = []
     for index in range(size[0]):
         column = get_column(size, tiles, index)
         if is_invalid_list(colors, y_position, max_per_column, column): return False
-        elif is_final and column in already_columns: return False
-        else: already_columns.append(column)
+        elif is_final:
+            if column in already_columns: return False # TODO: this line is probably very expensive.
+            else: already_columns.append(column)
     return True
 
-def clear_row_from_tiles(size:tuple[int,int], tiles:list[int], valid_rows:list[list[int]], y:int) -> None:
+def clear_row_from_tiles(size:tuple[int,int], tiles:list[int], valid_rows:collections.deque[list[int]], y:int) -> None:
     valid_rows.append(tiles[y * size[0]:(y + 1) * size[0]])
     tiles[y * size[0]:(y + 1) * size[0]] = [-1] * size[0]
 
@@ -33,11 +35,12 @@ def is_invalid_string(colors:int, max_per_row:int, regular_expression:re.Pattern
     if bool(regular_expression.search(row)): return True
     return False
 
-def is_invalid_list(colors:int, y_position:int, max_per_column:int, column:list[int]) -> bool: # TODO: only look for three-in-a-row near the bottom, since that's the only unchecked spot
+def is_invalid_list(colors:int, y_position:int, max_per_column:int, column:list[int]) -> bool:
     '''Detects the invalidity of a row or column if empty is 0, red is 1, and blue is 2'''
+    if y_position >= 2 and (column[y_position] != -1 and column[y_position] == column[y_position-1] and column[y_position] == column[y_position-2]): return True
     for color in range(colors):
         if column.count(color) > max_per_column: return True
-    return y_position >= 2 and (column[y_position] != -1 and column[y_position] == column[y_position-1] and column[y_position] == column[y_position-2])
+    return False
 
 def get_valid_rows(size:tuple[int,int], colors:int, max_per_row:int, regular_expression:re.Pattern[str]) -> list[list[int]]:
     if colors ** size[0] >= 4096:
@@ -87,6 +90,7 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
     regular_expression = re.compile("|".join([str(i) + "{3}" for i in range(colors)]))
     valid_rows = get_valid_rows(size, colors, max_per_row, regular_expression)
     random.shuffle(valid_rows)
+    valid_rows = collections.deque(valid_rows)
 
     y_position = 0
     tiles:list[int] = [-1 for i in range(size[0] * size[1])] # output
@@ -95,7 +99,8 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
     while y_position < size[1]:
         # LevelPrinter.print_board([tile + 1 for tile in tiles], size)
         row_tries[y_position] += 1
-        current_row = valid_rows.pop(0)
+        
+        current_row = valid_rows.popleft()
         # print(seed, size, row_tries, y_position)
         # for index, x_position in enumerate(range(y_position * size[0],(y_position + 1) * size[0])): tiles[x_position] = current_row[index]
         tiles[y_position * size[0]:(y_position + 1) * size[0]] = current_row
@@ -115,7 +120,7 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
                 y_position = 1
     random.seed(after_seed)
     tiles = [tile + 1 for tile in tiles]
-    return tiles # TODO: make valid_rows a list of lists of ints *after* being generated and remove wave_collapse_storage
+    return tiles
 
 if __name__ == "__main__":
     SIZE = 6
