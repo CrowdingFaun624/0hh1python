@@ -75,10 +75,11 @@ class LevelSelector(Drawable.Drawable):
         self.calculate_sizes()
         font = Fonts.get_font("josefin", int(self.tile_size / 2))
         surface = pygame.Surface((self.max_width, self.total_height), pygame.SRCALPHA)
+        current_time = time.time()
         for tile, position in self.tiles_positions:
             color, level, display_color, x, y = tile; x_position, y_position = position
             is_even = is_even = (x + y) % 2 == 1
-            tile_surface = Tile.Tile(0, self.tile_size, display_color, is_even, 2, 0).display(None, 0.0, force_new=True)
+            tile_surface = Tile.Tile(0, self.tile_size, display_color, is_even, 2, current_time).display(None, 0.0, force_new=True)
             surface.blit(tile_surface, (x_position, y_position))
             font_surface = font.render(str(level), True, Colors.font)
             font_size = font_surface.get_size()

@@ -14,15 +14,18 @@ import UI.Drawable as Drawable
 import UI.Fonts as Fonts
 import UI.Textures as Textures
 import UI.Tile as Tile
+import Utilities.Animation as Animation
 import Utilities.Bezier as Bezier
 
 CLICK_ACTION_LOCKED = "locked"
 CLICK_ACTION_SUCCESS = "success"
 LOADING_TILE_SIZE = 0.5
-FADE_IN_TIME = 0.3
-CLOSE_TIME = 0.1
-FADE_OUT_TIME = 2.0
+BOARD_FADE_IN_TIME = 0.3
+BOARD_FADE_OUT_TIME_CLOSE = 0.1
+BOARD_FADE_OUT_TIME_COMPLETE = 2.0
 COMPLETION_WAIT_TIME = 0.75
+LOADING_FADE_IN_TIME = 0.3
+LOADING_FADE_OUT_TIME = 0.3
 
 class Board(Drawable.Drawable):
 
@@ -42,8 +45,8 @@ class Board(Drawable.Drawable):
         self.__current_mouse_over:int = None
         self.show_locks = False # TODO: make this carry over between board instances.
         self.is_complete = False # used for locking all of the tiles
-        self.is_closing = False
-        self.is_fading_out = False
+        self.board_opacity = Animation.Animation(0.0, 0.0, BOARD_FADE_IN_TIME, Bezier.ease_in)
+        self.loading_opacity = Animation.Animation(1.0, 0.0, LOADING_FADE_IN_TIME, Bezier.ease_in)
         self.is_finished_loading = False
         self.window_size = window_size
         self.buttons = []
@@ -56,12 +59,9 @@ class Board(Drawable.Drawable):
 
     def loading_screen_init(self) -> None:
         self.loading_start_time = time.time()
-        self.loading_finish_time = None
-        self.completion_time = None
-        self.close_time = None
         padding_amount = self.display_size * 0.04
         loading_tile_size = LOADING_TILE_SIZE * min(self.display_size *  max(self.size) + padding_amount, self.display_size *  max(self.size) + padding_amount)
-        self.loading_tile = Tile.Tile(0, loading_tile_size, self.colors, False, self.colors, self.loading_start_time)
+        self.loading_tile = Tile.Tile(0, loading_tile_size, self.colors, False, 2, self.loading_opacity.get())
         self.loading_tile.previous_value = None
         self.loading_text = Fonts.loading_screen.render("Loading", True, Colors.font)
 
@@ -77,8 +77,9 @@ class Board(Drawable.Drawable):
             self.player_board = [(DEFAULT[:] if value == 0 else [value]) for value in self.empty_board]
         self.init_tiles()
         
+        self.loading_opacity.set(0.0, LOADING_FADE_OUT_TIME)
+        self.board_opacity.set(1.0, BOARD_FADE_IN_TIME)
         self.is_finished_loading = True
-        self.loading_finish_time = time.time()
 
     def get_lock_surface(self) -> pygame.Surface:
         '''Returns a copy of the lock texture, sized and opacitized correctly.'''
@@ -115,25 +116,10 @@ class Board(Drawable.Drawable):
             surface_size = (self.display_size * self.size[0] + padding_amount, self.display_size * self.size[1] + padding_amount)
 
         current_time = time.time()
-        opacity = 1.0
-        if self.loading_finish_time is not None:
-            since_load_stop = current_time - self.loading_finish_time
-            if since_load_stop <= FADE_IN_TIME:
-                opacity = Bezier.ease_out(0.0, 1.0, since_load_stop / FADE_IN_TIME)
-        if self.is_fading_out:
-            since_completion = current_time - self.completion_time - COMPLETION_WAIT_TIME
-            if since_completion <= FADE_OUT_TIME:
-                opacity = 1 - Bezier.ease_in(0.0, 1.0, since_completion / FADE_OUT_TIME)
-            else: opacity = 0.0
-        if self.is_closing:
-            since_close = current_time - self.close_time
-            if since_close <= CLOSE_TIME:
-                opacity = 1 - Bezier.ease_in(0.0, 1.0, since_close / CLOSE_TIME)
-            else: opacity = 0.0
-        
+        board_opacity = self.board_opacity.get(current_time)
         surface = pygame.Surface(surface_size, pygame.SRCALPHA)
-        surface.set_alpha(opacity * 255)
-        for button in self.buttons: button.surface.set_alpha(opacity * 255)
+        # surface.set_alpha(board_opacity * 255)
+        for button in self.buttons: button.surface.set_alpha(board_opacity * 255)
         surface.fill(Colors.background)
 
         if self.is_finished_loading:
@@ -142,40 +128,29 @@ class Board(Drawable.Drawable):
                 y = index // self.size[0]
                 tile_surface_requirements = self.tiles[index].tick(current_time)
                 tile_surface = self.tiles[index].display(tile_surface_requirements, current_time)
-                if opacity != 1.0: tile_surface.set_alpha(opacity * 255)
-                # elif tile_surface.get_alpha() != 255: tile_surface.set_alpha(255)
+                tile_surface.set_alpha(board_opacity * 255)
                 
                 self.tiles[index].last_tick_time = current_time
                 surface.blit(tile_surface, (x*self.display_size, y*self.display_size))
-            
-        if not self.is_finished_loading or current_time - self.loading_finish_time <= FADE_IN_TIME:
-            self.__display_loading_screen(current_time, surface_size, surface)
+        
+        loading_opacity = self.loading_opacity.get(current_time)
+        if loading_opacity != 0.0:
+            self.__display_loading_screen(current_time, surface_size, surface, loading_opacity)
         return surface
 
-    def __display_loading_screen(self, current_time:float, surface_size:tuple[float,float], surface:pygame.Surface) -> None:
-        since_load_start = current_time - self.loading_start_time
-        since_load_stop = current_time - self.loading_finish_time if self.loading_finish_time is not None else None
-        opacity = 1.0
-        if since_load_start < FADE_IN_TIME:
-            fraction_since_start = since_load_start / FADE_IN_TIME
-            opacity *= Bezier.ease_out(0.0, 1.0, fraction_since_start)
-        if since_load_stop is not None and since_load_stop < FADE_IN_TIME:
-            fraction_since_stop = since_load_stop / FADE_IN_TIME
-            opacity *= 1 - Bezier.ease_out(0.0, 1.0, fraction_since_stop)
-        if since_load_stop is not None and since_load_stop >= FADE_IN_TIME: opacity = 0.0
-
+    def __display_loading_screen(self, current_time:float, surface_size:tuple[float,float], surface:pygame.Surface, opacity:float) -> None:
         center_x = surface_size[0] / 2; center_y = surface_size[1] * 1.25 / 2
         smallest_size = min(surface_size)
         tile_size = smallest_size * LOADING_TILE_SIZE
         corner_x_tile = center_x - (tile_size / 2); corner_y_tile = center_y - (tile_size / 2)
         loading_tile_surface = self.loading_tile.display_loading(current_time - self.loading_start_time)
-        if opacity != 1.0: loading_tile_surface.set_alpha(opacity * 255)
+        loading_tile_surface.set_alpha(opacity * 255)
         surface.blit(loading_tile_surface, (corner_x_tile, corner_y_tile))
 
         center_x = surface_size[0] / 2; center_y = surface_size[1] * 0.5 / 2
         text_size = self.loading_text.get_size()
         corner_x_text = center_x - (text_size[0] / 2); corner_y_text = center_y - (text_size[1] / 2)
-        if opacity != 1.0: self.loading_text.set_alpha(opacity * 255)
+        self.loading_text.set_alpha(opacity * 255)
         surface.blit(self.loading_text, (corner_x_text, corner_y_text))
 
     def tile_is_empty(self, tile) -> bool:
@@ -186,12 +161,12 @@ class Board(Drawable.Drawable):
         self.is_hinting = True
         current_time = time.time()
         for tile_index in tiles_indexes:
-            self.tiles[tile_index].highlight = True
-            self.tiles[tile_index].highlight_time = current_time
+            if not self.tiles[tile_index].is_highlighted:
+                self.tiles[tile_index].highlight(current_time)
     def unhighlight(self) -> None:
         self.is_hinting = False
         for tile in self.tiles:
-            tile.highlight = False
+            tile.unhighlight()
 
     def update_locks(self) -> None:
         '''Will show/hide locks on tiles that were in the starting board.'''
@@ -204,8 +179,7 @@ class Board(Drawable.Drawable):
         expanded_player_board = LU.expand_board(self.colors, self.player_board) if isinstance(self.player_board[0], int) else self.player_board
         expanded_full_board = LU.expand_board(self.colors, self.full_board) if isinstance(self.full_board[0], int) else self.full_board
         if LU.boards_match(expanded_player_board, expanded_full_board):
-            self.is_complete = True
-            self.completion_time = time.time()
+            self.board_opacity.set(0.0, BOARD_FADE_OUT_TIME_COMPLETE)
             for button in self.buttons: button.enabled = False
             for tile in self.tiles:
                 tile.can_modify = False
@@ -214,8 +188,7 @@ class Board(Drawable.Drawable):
             self.highlight(tile_indexes)
 
     def button_close(self) -> None:
-        self.close_time = time.time()
-        self.is_closing = True
+        self.board_opacity.set(0.0, BOARD_FADE_OUT_TIME_CLOSE)
         for button in self.buttons: button.enabled = False
         for tile in self.tiles:
             tile.can_modify = False
@@ -226,7 +199,6 @@ class Board(Drawable.Drawable):
         else:
             self.unhighlight()
             hint = LevelHinter.get_hint(self.size, self.colors, self.player_board, self.full_board)
-            print(hint.type, hint.tiles_affected, hint.target_tile)
             tile_indexes = hint.tiles_affected
             if isinstance(hint.target_tile, int): tile_indexes.append(hint.target_tile)
             self.highlight(tile_indexes)
@@ -266,7 +238,7 @@ class Board(Drawable.Drawable):
                 current_value += up_values[event.__dict__["button"]]
                 current_value = current_value % (self.colors + 1)
                 self.player_board[index] = current_value
-                self.tiles[index].value = current_value
+                self.tiles[index].set_value(current_value)
                 self.unhighlight()
                 if 0 not in self.player_board: self.mark_as_complete()
             else:
@@ -278,22 +250,20 @@ class Board(Drawable.Drawable):
                 direction = math.atan2(y - center_y, x - center_x) + (math.pi / 2) + (math.pi / self.colors) # in radians; clockwise; starts at left side and goes up; ends at 2pi
                 section = (int(direction // (math.tau / self.colors)) % self.colors) + 1
                 self.unhighlight()
+                if not self.tiles[index].can_modify: return
                 if event.__dict__["button"] != 3:
-                    if section in self.player_board[index]:
-                        self.player_board[index].remove(section)
-                    else:
-                        self.player_board[index].append(section)
-                        self.player_board[index].sort() # so it is recognized correctly as DEFAULT
-                    if self.tiles[index].can_modify:
-                        self.tiles[index].click_time_sections[section - 1] = time.time()
+                    is_insertion = section not in self.player_board[index]
+                    self.tiles[index].set_value_multi(section, is_insertion)
+                    if is_insertion: self.player_board[index].sort() # so it is recognized correctly as DEFAULT
+                    self.tiles[index].click_time_sections[section - 1] = time.time()
                 else:
                     if section not in self.player_board[index]:
-                        self.player_board[index].append(section)
+                        self.tiles[index].set_value_multi(section, True)
                         self.tiles[index].click_time_sections[section - 1] = time.time()
                     for color in range(self.colors):
                         if color == section - 1: continue
                         if color + 1 in self.player_board[index]:
-                            self.player_board[index].remove(color + 1)
+                            self.tiles[index].set_value_multi(color + 1, False)
                             self.tiles[index].click_time_sections[color] = time.time()
                 if False not in [len(tile) == 1 for tile in self.player_board]: self.mark_as_complete()
 
@@ -325,15 +295,16 @@ class Board(Drawable.Drawable):
                 case pygame.WINDOWLEAVE: mouse_leave()
         
         current_time = time.time()
-        if self.is_complete: self.is_fading_out = (current_time - self.completion_time > COMPLETION_WAIT_TIME)
-        if self.is_fading_out and current_time - self.completion_time > COMPLETION_WAIT_TIME + FADE_OUT_TIME:
+        # if self.is_complete: self.is_fading_out = (current_time - self.completion_time > COMPLETION_WAIT_TIME)
+        # if self.is_fading_out and current_time - self.completion_time > COMPLETION_WAIT_TIME + BOARD_FADE_OUT_TIME_COMPLETE:
+        if self.is_finished_loading and self.board_opacity.is_finished() and self.board_opacity.get(current_time) == 0.0:
             self.should_destroy = True
             for button in self.buttons:
                 button.should_destroy = True
-        elif self.is_closing and current_time - self.close_time > CLOSE_TIME:
-            self.should_destroy = True
-            for button in self.buttons:
-                button.should_destroy = True
+        # elif self.is_closing and current_time - self.close_time > BOARD_FADE_OUT_TIME_CLOSE:
+        #     self.should_destroy = True
+        #     for button in self.buttons:
+        #         button.should_destroy = True
         def scale_texture(surface:pygame.Surface) -> pygame.Surface:
             return pygame.transform.scale_by(surface, self.window_size[1] / 900)
         if self.is_finished_loading and not self.summoned_buttons:

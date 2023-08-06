@@ -2,10 +2,8 @@ import pygame
 
 import UI.Colors as Colors
 import UI.Drawable as Drawable
-import UI.Fonts as Fonts
-import UI.LevelSelector as LevelSelector
-import Utilities.Animations as Animations
-import Utilities.Bezier as Bezier
+import UI.Intro as Intro
+import UI.Textures as Textures
 
 
 def extend_objects(objects_input:list[Drawable.Drawable], extension:list[tuple[Drawable.Drawable,int]]) -> None:
@@ -19,13 +17,12 @@ def extend_objects(objects_input:list[Drawable.Drawable], extension:list[tuple[D
 pygame.init()
 DISPLAY_SIZE = (900, 900)
 screen = pygame.display.set_mode(DISPLAY_SIZE)
+pygame.display.set_icon(Textures.textures["logo_32.png"])
+pygame.display.set_caption("0h h1")
 clock = pygame.time.Clock()
 
-# print("time,progress")
-
 objects:list[Drawable.Drawable] = [
-    LevelSelector.LevelSelector(DISPLAY_SIZE)
-    # Board.Board(6, colors=3)
+    Intro.Intro(DISPLAY_SIZE)
 ]
 
 running = True

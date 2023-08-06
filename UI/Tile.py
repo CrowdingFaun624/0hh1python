@@ -3,12 +3,24 @@ import math
 import pygame
 
 import UI.Colors as Colors
-import Utilities.Animations as Animations
+import Utilities.Animation as Animation
 import Utilities.Bezier as Bezier
 
 LOCK_SHAKE_TIME = 0.5 # when locked tile is interacted with
 TRANSITION_TIME = 0.2 # from one color to another
 
+COLORS = {
+    (0, False): Colors.tile0,
+    (0, True): Colors.tile0,
+    (1, False): Colors.tile1_odd,
+    (1, True): Colors.tile1_even,
+    (2, False): Colors.tile2_odd,
+    (2, True): Colors.tile2_even,
+    (3, False): Colors.tile3_odd,
+    (3, True): Colors.tile3_even,
+    (4, False): Colors.tile4_odd,
+    (4, True): Colors.tile4_even
+}
 class Tile():
     def __init__(self, index:int, size:int, value:int|list[int], is_even:bool, colors:int, current_time:float, start_progress:float=1.0, is_locked:bool=False, can_modify:bool=True, show_lock:bool=False, lock_surface:pygame.Surface|None=None) -> None:
         self.index = index
@@ -16,22 +28,32 @@ class Tile():
         self.value = value
         self.is_even = is_even
         self.colors = colors # how many colors the board has
+        self.is_locked = is_locked
 
         self.click_time = 0.0
-        self.click_time_sections:list[float] = [0.0] * self.colors
+        if colors == 2:
+            current_color = COLORS[(value, is_even)]
+        else:
+            current_color = COLORS[(value[0], is_even)] if len(value) == 1 else COLORS[(0, is_even)]
+            self.click_time_sections:list[float] = [0.0] * self.colors
+            self.section_opacities:list[Animation.Animation] = [Animation.Animation(cur := (self.get_section_opacity(color) if color in value else 0.0), cur, TRANSITION_TIME, Bezier.ease_out) for color in range(1, colors + 1)]
+            self.multicolor_transition = Animation.Animation(float(self.is_locked), float(self.is_locked), TRANSITION_TIME, Bezier.ease_out)
+        color_tuple = (current_color.r, current_color.g, current_color.b)
+        self.color = Animation.MultiAnimation(color_tuple, color_tuple, TRANSITION_TIME, Bezier.ease_out)
+
         self.mouse_over_time = 0.0
         self.mouse_over_start = 0.0
         self.is_mousing_over = False
         self.click_type = None
         self.previous_value:list[int]|int|None = list(range(1, self.colors + 1)) if colors > 2 else None
         self.is_mousing_over = False
-        self.is_locked = is_locked
         self.can_modify = can_modify
         self.show_lock = False
         self.lock_surface = lock_surface
-        self.highlight = False
+        self.is_highlighted = False
         self.highlight_time = None
-        self.highlight_opacity = None
+        self.highlight_pulse_opacity = 0.0
+        self.highlight_transition_opacity = Animation.Animation(0.0, 0.0, TRANSITION_TIME, Bezier.ease_out)
         
         self.transition_progress = start_progress
         self.multicolor_brightness_progress = [0.0] * self.colors; self.multicolor_brightness_progress_eased = [0.0] * self.colors
@@ -45,60 +67,62 @@ class Tile():
         self.highlight_mask = self.__get_highlight_mask()
         self.highlight_mask_rotation = 0.0
 
+    def set_value(self, value:int) -> None:
+        self.value = value
+        current_color = COLORS[(value, self.is_even)]
+        self.color.set((current_color.r, current_color.g, current_color.b))
+    
+    def set_value_multi(self, color:int, value:bool) -> None:
+        if value:
+            if color not in self.value:
+                self.value.append(color)
+        else:
+            if color in self.value:
+                self.value.remove(color)
+        for section in range(self.colors):
+            self.section_opacities[section].set(self.get_section_opacity(section + 1))
+        if len(self.value) == 1: self.multicolor_transition.set(1.0)
+        else: self.multicolor_transition.set(0.0)
+    
+    def highlight(self, current_time:float) -> None:
+        self.is_highlighted = True
+        self.highlight_time = current_time
+        self.highlight_transition_opacity.set(1.0)
+    def unhighlight(self) -> None:
+        self.is_highlighted = False
+        self.highlight_transition_opacity.set(0.0)
+
+    def get_section_opacity(self, color:int) -> float:
+        '''Will return the target color for the given section'''
+        if len(self.value) == 1:
+            if self.value[0] == color: return 0.75
+            else: return 0.0625
+        else:
+            if color in self.value: return 0.25
+            else: return 0.0625
+
     def tick(self, current_time:float) -> list[any]:
         '''Returns the conditions that the tile is in this frame.'''
         self.__get_rotation(current_time, LOCK_SHAKE_TIME)
-        if self.colors != 2:
-            self.advance_transition_progress(current_time)
-            self.advance_multicolor_brightness_progress(current_time)
+        # if self.colors != 2:
+        #     self.advance_transition_progress(current_time)
+        #     self.advance_multicolor_brightness_progress(current_time)
         time_since_mouse_over = current_time - self.mouse_over_time
         time_since_mouse_start = current_time - self.mouse_over_start
         time_since_click = current_time - self.click_time
         conditions:list[any] = []
         conditions.append(self.rotation)
-        conditions.append(self.transition_progress)
+        color = self.color.get(current_time)
+        conditions.append((65536 * int(color[0]) + 256 * int(color[1]) + int(color[2])))
+        if self.colors != 2: conditions.append([anim.get(current_time) for anim in self.section_opacities])
         conditions.append(self.show_lock)
-        conditions.append(self.highlight)
-        conditions.append(self.highlight_opacity)
+        conditions.append(self.is_highlighted)
+        conditions.append(self.highlight_pulse_opacity * self.highlight_transition_opacity.get(current_time))
         if time_since_mouse_over <= TRANSITION_TIME: conditions.append(time_since_mouse_over)
         if time_since_mouse_start <= TRANSITION_TIME: conditions.append(time_since_mouse_start)
         if time_since_click <= TRANSITION_TIME: conditions.append(time_since_click)
         return conditions
 
-    def advance_transition_progress(self, current_time:float) -> None:
-        '''Changes the transition progress according to the current state'''
-        def get_direction() -> int:
-            '''Returns 1 (toward full color) or -1 (toward multicolor)'''
-            if len(self.value) != 1: return -1
-            if self.is_mousing_over and not self.is_locked: return -1
-            return 1
-        direction = get_direction()
-        amount = (current_time - self.last_tick_time) / TRANSITION_TIME
-        self.transition_progress += direction * amount
-        # there's no built in clamp function or anything wtf
-        if self.transition_progress < 0.0: self.transition_progress = 0.0
-        elif self.transition_progress > 1.0: self.transition_progress = 1.0
-        self.transition_progress_eased = Bezier.ease_out(0.0, 1.0, self.transition_progress)
-    
-    def advance_multicolor_brightness_progress(self, current_time:float) -> None:
-        '''Changes the multicolor brightness progress according to the current state'''
-        def get_direction(index:int) -> int:
-            '''Returns 1 (toward maximum brightness) or -1 (toward minimum brightness)'''
-            if len(self.value) == 1 and index + 1 in self.value:
-                return 1
-            else: return -1
-        for index in range(self.colors):
-            direction = get_direction(index)
-            amount = (current_time - self.last_tick_time) / TRANSITION_TIME
-            self.multicolor_brightness_progress[index] += direction * amount
-            if self.multicolor_brightness_progress[index] < 0.0: self.multicolor_brightness_progress[index] = 0.0
-            elif self.multicolor_brightness_progress[index] > 1.0: self.multicolor_brightness_progress[index] = 1.0
-            match direction:
-                case -1:
-                    self.multicolor_brightness_progress_eased[index] = Bezier.ease_out(0.0, 1.0, self.multicolor_brightness_progress[index])
-                case 1:
-                    self.multicolor_brightness_progress_eased[index] = 1 - Bezier.ease_out(0.0, 1.0, 1 - self.multicolor_brightness_progress[index])
-    # TODO: put all of these advance functions into a class in another file and make everything use that instead.
     def display_loading(self, elapsed_time:float) -> pygame.Surface:
         self.__get_rotation_loading(elapsed_time)
         return self.__get_surface_normal(elapsed_time)
@@ -141,20 +165,15 @@ class Tile():
 
     def __get_highlight(self, current_time:float) -> pygame.Surface:
         if self.highlight_mask_rotation != self.rotation: self.highlight_mask = self.__get_highlight_mask()
-        self.highlight_opacity = Animations.animate(Animations.flash, 2.0, Bezier.ease_in_out, current_time - self.highlight_time)
-        self.highlight_mask.set_alpha(self.highlight_opacity * 255)
+        self.highlight_pulse_opacity = Animation.animate(Animation.flash, 2.0, Bezier.ease_in_out, current_time - self.highlight_time)
+        opacity = self.highlight_pulse_opacity
+        opacity *= self.highlight_transition_opacity.get(current_time)
+        self.highlight_mask.set_alpha(opacity * 255)
         return self.highlight_mask
 
-    def __get_surface_normal(self, current_time) -> pygame.Surface:
-        if self.click_type == "locked": color_ratio = 1.0
-        else:
-            if self.previous_value is None or current_time - self.click_time > TRANSITION_TIME:
-                color_ratio = 1.0
-            else: color_ratio = self.__get_color_ratio(current_time, TRANSITION_TIME, self.click_time)
-        current_color = self.__get_tile_color()
-        previous_color = self.__get_tile_color(self.previous_value)
-        # print(self.value, self.previous_value, current_color, previous_color, color_ratio)
-        color = self.__blend_colors(current_color, previous_color, color_ratio)
+    def __get_surface_normal(self, current_time:float) -> pygame.Surface:
+        color = self.color.get(current_time)
+        color = pygame.Color(int(color[0]), int(color[1]), int(color[2]))
         
         padding_size = 0.04 * self.size
         tile_size = self.size - (padding_size * 2)
@@ -167,7 +186,7 @@ class Tile():
         if self.show_lock and self.lock_surface is not None:
             lock_surface, position = self.__get_lock()
             button_surface.blit(lock_surface, position)
-        if self.highlight:
+        if self.highlight_transition_opacity.get(current_time) != 0.0:
             button_surface.blit(self.__get_highlight(current_time), (0, 0))
         return button_surface
 
@@ -194,15 +213,15 @@ class Tile():
         tile_size = self.size - (padding_size * 2)
         border_radius = self.size * 0.1
         shadow_radius = tile_size * 0.06
-        # self.__get_rotation(current_time, LOCK_SHAKE_TIME)
-        if self.transition_progress_eased == 1.0: button_surface = get_full_color(single_color_to_int(self.value), single_color_to_int(self.previous_value))
-        elif self.transition_progress_eased == 0.0: button_surface = get_multicolor()
+        transition_progress = self.multicolor_transition.get(current_time)
+        if transition_progress == 1.0: button_surface = get_full_color(single_color_to_int(self.value), single_color_to_int(self.previous_value))
+        elif transition_progress == 0.0: button_surface = get_multicolor()
         else:
             current_value_single = self.value[0] if len(self.value) == 1 else self.previous_value[0]
             full_color = get_full_color(current_value_single, current_value_single, 0.0)
             multicolor = get_multicolor()
 
-            full_color.set_alpha(255 * self.transition_progress_eased)
+            full_color.set_alpha(255 * transition_progress)
             multicolor.blit(full_color, (0, 0))
             button_surface = multicolor
         if len(self.value) == 1:
@@ -210,7 +229,7 @@ class Tile():
         if self.show_lock and self.lock_surface is not None:
             lock_surface, position = self.__get_lock()
             button_surface.blit(lock_surface, position)
-        if self.highlight:
+        if self.highlight_transition_opacity.get(current_time) != 0.0:
             button_surface.blit(self.__get_highlight(current_time), (0, 0))
         return button_surface
 
@@ -218,26 +237,14 @@ class Tile():
         self.rotation = 0
         if self.click_type == "locked":
             if current_time - self.click_time <= time:
-                self.rotation = math.radians(Animations.animate(Animations.wiggle, time, Bezier.ease, current_time - self.click_time)) # ANIMATION
+                self.rotation = math.radians(Animation.animate(Animation.wiggle, time, Bezier.ease, current_time - self.click_time)) # ANIMATION
         self.sin_rotation = math.sin(self.rotation)
         self.cos_rotation = math.cos(self.rotation)
     def __get_rotation_loading(self, elapsed_time:float) -> None:
-        self.rotation = math.radians(Animations.animate(Animations.wiggle, 2.0, Bezier.ease, elapsed_time, True))
+        self.rotation = math.radians(Animation.animate(Animation.wiggle, 2.0, Bezier.ease, elapsed_time, True))
         self.sin_rotation = math.sin(self.rotation)
         self.cos_rotation = math.cos(self.rotation)
 
-    COLORS = {
-        (0, False): Colors.tile0,
-        (0, True): Colors.tile0,
-        (1, False): Colors.tile1_odd,
-        (1, True): Colors.tile1_even,
-        (2, False): Colors.tile2_odd,
-        (2, True): Colors.tile2_even,
-        (3, False): Colors.tile3_odd,
-        (3, True): Colors.tile3_even,
-        (4, False): Colors.tile4_odd,
-        (4, True): Colors.tile4_even
-    }
     def __blend_colors(self, color1:pygame.Color, color2:pygame.Color, ratio:float) -> pygame.Color:
         if ratio == 1.0: return color1
         elif ratio == 0.0: return color2
@@ -255,7 +262,7 @@ class Tile():
 
     def __get_tile_color(self, value:int|None=None) -> pygame.Color:
         value = self.value if value is None else value
-        return Tile.COLORS[(value, self.is_even)]
+        return COLORS[(value, self.is_even)]
 
     def __get_multicolor_mask(self) -> pygame.Surface:
         padding_size = 0.04 * self.size
@@ -322,22 +329,9 @@ class Tile():
     def __draw_multicolor(self, padding_size:float, sections:int, current_time:float) -> pygame.Surface:
         colors:list[pygame.Color] = []
         for index in range(sections):
-            color_restrictions = (0.0625, Bezier.linear_bezier(0.25, 0.75, self.multicolor_brightness_progress_eased[index]))
-            is_in_previous = index + 1 in self.previous_value
-            is_in_current = index + 1 in self.value
-            is_transitioning = ((is_in_previous and not is_in_current) or (not is_in_previous and is_in_current)) and current_time - self.click_time_sections[index] <= TRANSITION_TIME
             full_color = self.__get_tile_color(index + 1)
             empty_color = self.__get_tile_color(0)
-            if is_transitioning:
-                color_ratio = self.__get_color_ratio(current_time, TRANSITION_TIME, self.click_time_sections[index])
-                # print(color_ratio, self.click_time_sections, index)
-                if index + 1 in self.value: color_ratio = Bezier.linear_bezier(color_restrictions[0], color_restrictions[1], color_ratio)
-                else: color_ratio = Bezier.linear_bezier(color_restrictions[1], color_restrictions[0], color_ratio)
-            else:
-                if index + 1 in self.value: color_ratio = color_restrictions[1]
-                else: color_ratio = color_restrictions[0]
-            # print(color_ratio)
-            color = self.__blend_colors(full_color, empty_color, color_ratio)
+            color = self.__blend_colors(full_color, empty_color, self.section_opacities[index].get(current_time))
             colors.append(color)
         button_surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
         button_surface.fill(Colors.tile0)
