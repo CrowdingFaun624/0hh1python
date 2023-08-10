@@ -293,30 +293,28 @@ class Board(Drawable.Drawable):
             index = get_index()
             if index is None:
                 if self.__current_mouse_over is not None:
-                    self.tiles[self.__current_mouse_over].is_mousing_over = False
+                    self.tiles[self.__current_mouse_over].stop_mousing_over(current_time)
                     self.__current_mouse_over = None
                 return
             if index != self.__current_mouse_over:
-                
                 if self.__current_mouse_over is not None:
-                    self.tiles[self.__current_mouse_over].mouse_over_time = time.time()
-                    self.tiles[self.__current_mouse_over].is_mousing_over = False
+                    self.tiles[self.__current_mouse_over].stop_mousing_over(current_time)
                 if index >= len(self.tiles): raise IndexError("list index (%i) out of range of %s" % (index, str(self.tiles)))
-                self.tiles[index].mouse_over_start = time.time() # NOTE: it might be worth considering setting the previous one back to 0
-                self.tiles[index].is_mousing_over = True
+                self.tiles[index].start_mousing_over(current_time)
             self.__current_mouse_over = index
         def mouse_leave() -> None:
             if self.__current_mouse_over is not None:
                 self.tiles[self.__current_mouse_over].is_mousing_over = False
             self.__current_mouse_over = None
         
+        current_time = time.time()
+
         for event in events:
             match event.type:
                 case pygame.MOUSEBUTTONDOWN: mouse_button_down()
                 case pygame.MOUSEMOTION: mouse_motion()
                 case pygame.WINDOWLEAVE: mouse_leave()
         
-        current_time = time.time()
         # if self.is_complete: self.is_fading_out = (current_time - self.completion_time > COMPLETION_WAIT_TIME)
         # if self.is_fading_out and current_time - self.completion_time > COMPLETION_WAIT_TIME + BOARD_FADE_OUT_TIME_COMPLETE:
         if self.is_finished_loading and self.board_opacity.is_finished() and self.board_opacity.get(current_time) == 0.0:

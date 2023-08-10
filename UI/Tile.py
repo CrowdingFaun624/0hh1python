@@ -71,6 +71,23 @@ class Tile():
         current_color = COLORS[(value, self.is_even)]
         self.color.set((current_color.r, current_color.g, current_color.b))
     
+    def __set_multicolor_transition_target(self) -> float:
+        if self.colors == 2: value = 1.0
+        elif len(self.value) != 1: value = 0.0
+        elif not self.can_modify: value = 1.0
+        elif self.is_mousing_over: value = 0.0
+        else: value = 1.0
+        self.multicolor_transition.set(value)
+
+    def start_mousing_over(self, current_time:float) -> None:
+        self.mouse_over_start = current_time
+        self.is_mousing_over = True
+        self.__set_multicolor_transition_target() # self.multicolor_transition.set(0.0)
+    def stop_mousing_over(self, current_time:float) -> None:
+        self.mouse_over_time = current_time
+        self.is_mousing_over = False
+        self.__set_multicolor_transition_target() # self.multicolor_transition.set(1.0)
+
     def set_value_multi(self, color:int, value:bool) -> None:
         if value:
             if color not in self.value:
@@ -81,7 +98,7 @@ class Tile():
                 self.value.remove(color)
         for section in range(self.colors):
             self.section_opacities[section].set(self.get_section_opacity(section + 1))
-        if len(self.value) == 1: self.multicolor_transition.set(1.0)
+        if len(self.value) == 1: self.__set_multicolor_transition_target() # self.multicolor_transition.set(1.0)
         else: self.multicolor_transition.set(0.0)
         if len(self.value) == 1: current_color = COLORS[(self.value[0], self.is_even)]
         else: current_color = COLORS[(0, self.is_even)]
@@ -117,13 +134,12 @@ class Tile():
         conditions.append(self.rotation)
         color = self.color.get(current_time)
         conditions.append((65536 * int(color[0]) + 256 * int(color[1]) + int(color[2])))
-        if self.colors != 2: conditions.append([anim.get(current_time) for anim in self.section_opacities])
         conditions.append(self.show_lock)
-        conditions.append(self.is_highlighted)
-        conditions.append(self.highlight_pulse_opacity * self.highlight_transition_opacity.get(current_time))
+        conditions.append(self.highlight_pulse_opacity)
         if time_since_mouse_over <= TRANSITION_TIME: conditions.append(time_since_mouse_over)
         if time_since_mouse_start <= TRANSITION_TIME: conditions.append(time_since_mouse_start)
         if time_since_click <= TRANSITION_TIME: conditions.append(time_since_click)
+        if self.is_highlighted: conditions.append(current_time - self.highlight_time)
         return conditions
 
     def display_loading(self, elapsed_time:float) -> pygame.Surface:
