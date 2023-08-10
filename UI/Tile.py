@@ -135,7 +135,7 @@ class Tile():
         if not force_new and self.current_surface_conditions == required_surface_conditions:
             return self.surface
         else:
-            print("%s got new pants" % self.index, self.current_surface_conditions, required_surface_conditions)
+            # print("%s got new pants" % self.index, self.current_surface_conditions, required_surface_conditions)
             new_surface = self.get_new_surface(current_time)
             self.surface = new_surface
             self.current_surface_conditions = required_surface_conditions

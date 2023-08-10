@@ -6,14 +6,14 @@ try:
     import LevelCreator.LevelGenerator as LevelGenerator
     import LevelCreator.LevelUtilities as LU
     import LevelCreator.LevelSolver as LevelSolver
+    import LevelCreator.LevelValidator as LevelValidator
 except ImportError:
     import LevelGenerator
     import LevelUtilities as LU
     import LevelSolver
+    import LevelValidator
 
-
-
-def generate(size:int|tuple[int,int], seed:int=None, colors:int=2) -> tuple[list[int],list[int],dict[str,any]]:
+def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, hard_mode:bool=False) -> tuple[list[int],list[int],dict[str,any]]:
     '''Returns the solution, the incomplete puzzle, and other data.'''
 
     if seed is None: seed = random.randint(-2147483648, 2147483647)
@@ -27,14 +27,14 @@ def generate(size:int|tuple[int,int], seed:int=None, colors:int=2) -> tuple[list
     full_grid = LevelGenerator.generate_solution(solution_generator_size, seed, colors)
     if is_rotated: full_grid = LU.rotate_board(full_grid, solution_generator_size)
 
-    empty_grid = breakdown(full_grid, size, seed, colors)
+    empty_grid = breakdown(full_grid, size, seed, colors, hard_mode)
     quality = round(LU.count_empty_tiles(empty_grid) / (size[0] * size[1]) * 100) # how many empty tiles there are
     other_data = {"seed": seed, "quality": quality}
     random.seed(after_seed)
     return full_grid, empty_grid, other_data
 
 
-def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, quality_requirement:int|None=None) -> list[int]:
+def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, hard_mode:bool=False) -> list[int]:
     '''Removes tiles from the board so it's an actual puzzle.
     basically how this works is that it picks a random tile from the board,
     and then picks an empty tile. That empty tile is picked in order of in
@@ -42,6 +42,7 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, qual
     the value of the empty tile using data available (hence why it
     prioritizes tiles in rows and columns), and then sets the non-empty
     tile to be empty if it was able to find it.'''
+    original_tiles = [[tile] for tile in tiles]
     tiles = [[tile] for tile in tiles]
 
     if seed is None: seed = random.randint(-2147483648, 2147483647)
@@ -51,18 +52,19 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, qual
     random.shuffle(random_range)
     tile_index = 0
     since_last_success = 0
-    '''# `index2` causes it to break early if it does not find any tiles
+    # `index2` causes it to break early if it does not find any tiles
     # within 6 iterations. It is not necessary to breakdown, but it probably
     # speeds it up greatly. The existence of this variable is why some tiles
     # clearly not necessary to the completion of the board exist on larger sizes.
     # If this is removed, the quality stuff may be removed, too. If larger board
-    # sizes are created, the value should be raised above 6.'''
+    # sizes are created, the value should be raised above 6.
     dependencies:list[list[int]] = [[] for i in range(size[0] * size[1])] # this is a thing I'm making
      # for optimization. It tracks the tiles a tile is dependent on to be solved.
     tiles_cache:list[int] = [list(range(1, colors + 1))] * (size[0] * size[1])
     DEFAULT = list(range(1, colors + 1))
     # debug_string = ""
     for tile_index in random_range:
+        # print(tile_index)
         tile_value = tiles[tile_index]
         tiles[tile_index] = DEFAULT[:]
         LU.strip_dependencies(dependencies, tile_index, tiles_cache, colors)
@@ -70,7 +72,7 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, qual
         current_state = LU.copy_tiles(tiles)
         LU.restore_cache(tiles, tiles_cache, colors) # TODO: if the board is full except for one after this function; assume it's completable (and measure performance)
         # was_successful = LevelSolverOld.solve(size, tiles, tile_index, dependencies, colors)
-        was_successful = LevelSolver.solve(size, colors, tiles, tile_index, dependencies)
+        was_successful = LevelSolver.solve(size, colors, tiles, tile_index, dependencies, hard_mode=hard_mode)
         tiles_cache = tiles
         tiles = current_state
         # debug_string += str(int(was_successful))
@@ -87,14 +89,27 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, qual
 
 if __name__ == "__main__":
     os.chdir(os.path.split(os.path.split(__file__)[0])[0])
-    size = 14
-    # full, empty, other_data = cProfile.run("generate(size, 1234, 2)")
-    full, empty, other_data = generate(size, 50, colors=2)
+    size = 6
+    seed = 34
+    colors = 2
+    hard_mode = True
+    size_tuple = (size, size) if isinstance(size, int) else size
+    # full, empty, other_data = cProfile.run("generate(size_tuple, seed, colors, hard_mode=hard_mode)")
+    full, empty, other_data = generate(size_tuple, seed, colors=colors, hard_mode=hard_mode)
+    solved = LU.expand_board(colors, empty)
 
     print("FULL:")
-    LU.print_board(full, size)
+    LU.print_board(full, size_tuple)
     print("EMPTY:")
-    LU.print_board(empty, size)
+    LU.print_board(empty, size_tuple)
+    solved = LU.expand_board(colors, empty)
+    LevelSolver.solve(size, colors, solved, None, None, True, hard_mode=hard_mode)
+    if not LU.boards_match(full, solved, colors):
+        print("SOLVED:")
+        LU.print_board(solved, size)
+        different_tiles = LU.get_not_matching_tiles(full, solved, colors)
+        different_positions = [str(LU.get_pos(different_tile, size)) for different_tile in different_tiles]
+        raise RuntimeError("The full and solved boards are different at positions [%s]." % (", ".join(different_positions)))
 
 # TODO: re-design the generation script:
 # 1. Generate a random tile.

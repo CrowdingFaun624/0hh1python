@@ -3,16 +3,6 @@ try:
 except ImportError:
     import LevelUtilities as LU
 
-# def get_row_indexes(size:tuple[int,int], y_position:int) -> list[int]:
-#     '''Returns a list of indexes in the row.'''
-#     return list(range(y_position * size[0], (y_position + 1) * size[0]))
-# def get_column_indexes(size:tuple[int,int], x_position:int) -> list[int]:
-#     '''Returns a list of indexes in the column.'''
-#     return list(range(x_position, size[0] * size[1], size[0]))
-# def get_values(indexes:list[int], tiles:list[list[int]]) -> list[list[int]]:
-#     '''Gets the values of a list of indexes.'''
-#     return [tiles[index] for index in indexes]
-
 def is_valid(tiles:list[list[int]], size:tuple[int,int], colors:int) -> bool:
     '''Returns if the given tiles is valid or not.'''
     max_per_row = size[0] // colors

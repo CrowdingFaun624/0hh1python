@@ -28,7 +28,7 @@ def get_incomplete_tile_indexes_within(index_list:list[int], tiles:list[list[int
 def expand_board(colors:int, tiles:list[int]) -> list[list[int]]:
     '''Turns a list of integers into a list of lists of singular integers.'''
     DEFAULT = list(range(1, colors + 1))
-    return [DEFAULT if tile == 0 else [tile] for tile in tiles]
+    return [DEFAULT[:] if tile == 0 else [tile] for tile in tiles]
 
 def collapse_board(tiles:list[list[int]], colors:int=None, strict:bool=False) -> list[int]:
     output:list[int] = []
@@ -97,11 +97,25 @@ def get_index(pos:tuple[int,int], size:tuple[int,int]) -> int:
 def copy_tiles(tiles:list[list[int]]) -> list[list[int]]:
     return [copy_tile[:] for copy_tile in tiles]
 
-def boards_match(empty_board:list[list[int]], full_board:list[list[int]]) -> bool:
+def boards_match(empty_board:list[list[int]], full_board:list[list[int]], colors:int|None=None) -> bool:
     '''Returns if the first board is valid according to the second board; i.e., all elements in the second board can be in the first board.'''
+    if isinstance(empty_board[0], int): empty_board = expand_board(colors, empty_board)
+    if isinstance(full_board[0], int): full_board = expand_board(colors, full_board)
     for tile_index in range(len(empty_board)):
         if full_board[tile_index][0] not in empty_board[tile_index]: return False
     else: return True
-def get_not_matching_tiles(empty_board:list[list[int]], full_board:list[list[int]]) -> list[int]:
+def get_not_matching_tiles(empty_board:list[list[int]], full_board:list[list[int]], colors:int|None=None) -> list[int]:
     '''Returns the indexes from empty_board that do not fit with full_board.'''
+    if isinstance(empty_board[0], int): empty_board = expand_board(colors, empty_board)
+    if isinstance(full_board[0], int): full_board = expand_board(colors, full_board)
     return [tile_index for tile_index in range(len(empty_board)) if full_board[tile_index][0] not in empty_board[tile_index]]
+
+def check_for_duplicates(board:list[list[int]]) -> list[tuple[int,int]]:
+    '''Returns the indexes of any objects that `is` another object within the list.'''
+    output:list[tuple[int,int]] = []
+    for index1, item1 in enumerate(board):
+        if isinstance(item1, list): raise ValueError("Board is not expanded!")
+        for index2, item2 in enumerate(board):
+            if index1 == index2: continue
+            if item1 is item2: output.append((index1, index2, item1, item2))
+    return output

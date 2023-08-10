@@ -58,6 +58,7 @@ class Board(Drawable.Drawable):
         self.player_board_fill_time = None
         self.marked_as_complete = False
 
+        self.loading_screen_init()
         generation_thread = threading.Thread(target=self.get_board_from_seed)
         generation_thread.start()
         self.summoned_buttons = False
@@ -71,10 +72,9 @@ class Board(Drawable.Drawable):
         self.loading_text = Fonts.loading_screen.render("Loading", True, Colors.font)
 
     def get_board_from_seed(self) -> list[int]:
-        self.loading_screen_init()
         self.full_board, self.empty_board, self.other_data, self.tiles = None, None, None, None
         # return
-        self.full_board, self.empty_board, self.other_data = LevelCreator.generate(self.size, self.seed, self.colors)
+        self.full_board, self.empty_board, self.other_data = LevelCreator.generate(self.size, self.seed, self.colors, True)
         if self.colors == 2:
             self.player_board = self.empty_board[:]
         else:
