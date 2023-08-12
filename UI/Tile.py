@@ -3,6 +3,7 @@ import math
 import pygame
 
 import UI.Colors as Colors
+import UI.Drawable as Drawable
 import Utilities.Animation as Animation
 import Utilities.Bezier as Bezier
 
@@ -21,7 +22,7 @@ COLORS = {
     (4, False): Colors.tile4_odd,
     (4, True): Colors.tile4_even
 }
-class Tile():
+class Tile(Drawable.Drawable):
     def __init__(self, index:int, size:int, value:int|list[int], is_even:bool, colors:int, current_time:float, start_progress:float=1.0, is_locked:bool=False, can_modify:bool=True, show_lock:bool=False, lock_surface:pygame.Surface|None=None) -> None:
         self.index = index
         self.size = size
@@ -57,7 +58,6 @@ class Tile():
         self.transition_progress = start_progress
         self.multicolor_brightness_progress = [0.0] * self.colors; self.multicolor_brightness_progress_eased = [0.0] * self.colors
 
-        self.surface = None
         self.current_surface_conditions:list[any] = None
         self.last_tick_time = current_time
         self.rotation = 0.0
@@ -65,6 +65,8 @@ class Tile():
         self.multicolor_mask_rotation = 0.0
         self.highlight_mask = self.__get_highlight_mask()
         self.highlight_mask_rotation = 0.0
+        super().__init__()
+        self.reload_for_board(None, current_time, True)
 
     def set_value(self, value:int) -> None:
         self.value = value
@@ -72,7 +74,7 @@ class Tile():
         self.color.set((current_color.r, current_color.g, current_color.b))
     
     def __set_multicolor_transition_target(self) -> float:
-        if self.colors == 2: value = 1.0
+        if self.colors == 2: return
         elif len(self.value) != 1: value = 0.0
         elif not self.can_modify: value = 1.0
         elif self.is_mousing_over: value = 0.0
@@ -121,7 +123,7 @@ class Tile():
             if color in self.value: return 0.25
             else: return 0.0625
 
-    def tick(self, current_time:float) -> list[any]:
+    def get_conditions(self, current_time:float) -> list[any]:
         '''Returns the conditions that the tile is in this frame.'''
         self.__get_rotation(current_time, LOCK_SHAKE_TIME)
         # if self.colors != 2:
@@ -142,20 +144,18 @@ class Tile():
         if self.is_highlighted: conditions.append(current_time - self.highlight_time)
         return conditions
 
-    def display_loading(self, elapsed_time:float) -> pygame.Surface:
+    def reload_for_loading(self, elapsed_time:float) -> pygame.Surface:
         self.__get_rotation_loading(elapsed_time)
         return self.__get_surface_normal(elapsed_time)
 
-    def display(self, required_surface_conditions:list[any], current_time:float, force_new:bool=False) -> pygame.Surface:
-        # if self.index == 17: print(self.index, self.transition_progress)
-        if not force_new and self.current_surface_conditions == required_surface_conditions:
-            return self.surface
-        else:
+    def reload_for_board(self, required_surface_conditions:list[any], current_time:float, force_new:bool=False) -> None:
+        '''Redraws the tile's surface if the conditions have changed.'''
+        if force_new or self.current_surface_conditions != required_surface_conditions:
             # print("%s got new pants" % self.index, self.current_surface_conditions, required_surface_conditions)
             new_surface = self.get_new_surface(current_time)
             self.surface = new_surface
             self.current_surface_conditions = required_surface_conditions
-            return new_surface
+            self.surface = new_surface
 
     def get_new_surface(self, current_time:float) -> pygame.Surface:
         if self.colors == 2:

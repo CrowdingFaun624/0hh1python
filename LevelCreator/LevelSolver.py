@@ -518,9 +518,6 @@ if __name__ == "__main__":
     print(tiles)
     print(dependencies)
 
-# TODO: replace shit with sets and see if it's faster.
+# TODO: replace sets with lists and see if it's faster.
 
-# TODO: create rule 4 algorithm: if the row contains the same amount of reds missing and blues missing, return without doing anything.
-# Otherwise, for each empty tile, do the following: place the less common color there. Then for each other tile, place the more common color by default,
-# but place the less common color if there would be a three-in-a-row error otherwise. If the number of additional less common tiles exceeds that color's
-# original missing count, then the placed tile is not the less common color.
+# TODO: for rule 4, establish a maximum missing tile amount for it to be invalid. Also determine if an equal more than/less than is actually not do anything.

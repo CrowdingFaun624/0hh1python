@@ -2,8 +2,9 @@ import pygame
 
 import UI.Colors as Colors
 import UI.Drawable as Drawable
-import UI.Intro as Intro
+# import UI.Intro as Intro
 import UI.Textures as Textures
+import UI.UIManager as UIManager
 
 
 def extend_objects(objects_input:list[Drawable.Drawable], extension:list[tuple[Drawable.Drawable,int]]) -> None:
@@ -14,6 +15,14 @@ def extend_objects(objects_input:list[Drawable.Drawable], extension:list[tuple[D
             case 1: objects_input.append(new_object)
             case _: raise ValueError("Invalid thing %s as ap- or pre-pending direction!" % str(position))
 
+def get_children(object:Drawable.Drawable) -> list[Drawable.Drawable]:
+    '''Recursively gets the children of the Drawable. Returns a list of the back-children, the parent object, and the front-children, in that order.'''
+    objects:list[Drawable.Drawable] = []
+    for child in object.children:
+        objects.append(child)
+        objects.extend(get_children(child))
+    return objects
+
 pygame.init()
 DISPLAY_SIZE = (900, 900)
 screen = pygame.display.set_mode(DISPLAY_SIZE)
@@ -22,7 +31,7 @@ pygame.display.set_caption("0h h1")
 clock = pygame.time.Clock()
 
 objects:list[Drawable.Drawable] = [
-    Intro.Intro(DISPLAY_SIZE)
+    UIManager.get_main_object()
 ]
 
 running = True
@@ -38,9 +47,13 @@ while running:
     new_objects:list[Drawable.Drawable] = []
     destroy_objects:list[int] = []
     for index, object in enumerate(objects):
-        tick_objects = object.tick(events, object.position)
-        if tick_objects is not None: new_objects.extend(tick_objects)
-        screen.blit(object.display(), object.position)
+        object_children = [object] + get_children(object)
+        tick_objects:list[tuple[Drawable.Drawable,int]] = []
+        for child in object_children:
+            child_return = child.tick(events, child.position)
+            if child_return is not None: tick_objects.extend(child_return)
+        new_objects.extend(tick_objects)
+        screen.blits([(child_surface, child.position) for child in object_children if (child_surface := child.display()) is not None])
         if object.should_destroy:
             new_objects.extend(object.destroy())
             destroy_objects.append(index)

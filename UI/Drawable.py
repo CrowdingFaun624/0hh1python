@@ -4,11 +4,12 @@ import pygame
 
 
 class Drawable():
-    def __init__(self, surface:pygame.Surface, position:tuple[int,int]=(0,0), restore_objects:list[tuple["Drawable",int]]|None=None) -> None:
+    def __init__(self, surface:pygame.Surface|None=None, position:tuple[int,int]|None=None, restore_objects:list[tuple["Drawable",int]]|None=None, children:list["Drawable"]|None=None) -> None:
         self.surface = surface
-        self.position = position
+        self.position = (0, 0) if position is None else position
         self.should_destroy = False
         self.restore_objects = [] if restore_objects is None else restore_objects
+        self.children = [] if children is None else children
     
     def display(self) -> pygame.Surface:
         return self.surface
@@ -34,6 +35,15 @@ class Drawable():
         return_stuff = self.restore_objects
         self.restore_objects = []
         return return_stuff
+
+    def set_alpha(self, value:int, this_surface:pygame.Surface|None=None) -> None:
+        '''Sets the alpha of an object and its children. If an object does not have a surface attribute, use this_surface.'''
+        if this_surface is not None:
+            this_surface.set_alpha(value)
+        elif self.surface is not None:
+            self.surface.set_alpha(value)
+        for child in self.children:
+            child.set_alpha(value)
 
     # https://stackoverflow.com/questions/15098900/how-to-set-the-pivot-point-center-of-rotation-for-pygame-transform-rotate
     def rotate_around_point(self, surface, angle:int, pivot:tuple[int,int], offset:tuple[int,int]) -> pygame.Surface:

@@ -9,6 +9,7 @@ import LevelCreator.LevelCreator as LevelCreator
 import LevelCreator.LevelHinter as LevelHinter
 import LevelCreator.LevelUtilities as LU
 import UI.Button as Button
+import UI.ButtonPanel as ButtonPanel
 import UI.Colors as Colors
 import UI.Drawable as Drawable
 import UI.Fonts as Fonts
@@ -19,21 +20,20 @@ import Utilities.Bezier as Bezier
 
 CLICK_ACTION_LOCKED = "locked"
 CLICK_ACTION_SUCCESS = "success"
-LOADING_TILE_SIZE = 0.5
-BOARD_FADE_IN_TIME = 0.3
+BOARD_FADE_IN_TIME = 0.1
 BOARD_FADE_OUT_TIME_CLOSE = 0.1
 BOARD_FADE_OUT_TIME_COMPLETE = 2.0
 COMPLETION_WAIT_TIME = 0.75
-LOADING_FADE_IN_TIME = 0.3
-LOADING_FADE_OUT_TIME = 0.3
 
 class Board(Drawable.Drawable):
 
-    def __init__(self, size:int|tuple[int,int], seed:int=None, colors:int=2, position:tuple[int,int]=(0,0), pixel_size:int=640, restore_objects:list[Drawable.Drawable]|None=None, window_size:tuple[int,int]=None) -> None:
+    def __init__(self, size:int|tuple[int,int], seed:int=None, colors:int=2, position:tuple[int,int]=(0,0), pixel_size:int=640, restore_objects:list[tuple[Drawable.Drawable,int]]|None=None, children:list[Drawable.Drawable]|None=None, window_size:tuple[int,int]=None) -> None:
         if isinstance(size, int): size = (size, size)
+        super().__init__()
         self.position = position
         self.should_destroy = False
         self.restore_objects = [] if restore_objects is None else restore_objects
+        self.children = [] if children is None else children
         largest_size = max(size)
         self.pixel_size = pixel_size
         self.display_size = pixel_size / largest_size
@@ -45,11 +45,9 @@ class Board(Drawable.Drawable):
         self.__current_mouse_over:int = None
         self.show_locks = False # TODO: make this carry over between board instances.
         self.is_complete = False # used for locking all of the tiles
-        self.board_opacity = Animation.Animation(0.0, 0.0, BOARD_FADE_IN_TIME, Bezier.ease_in)
-        self.loading_opacity = Animation.Animation(1.0, 0.0, LOADING_FADE_IN_TIME, Bezier.ease_in)
+        self.opacity = Animation.Animation(0.0, 0.0, BOARD_FADE_IN_TIME, Bezier.ease_in)
         self.is_finished_loading = False
         self.window_size = window_size
-        self.buttons = []
         self.hint_tiles:list[int] = []
         self.is_hinting = False
         self.history:list[tuple[int,int|list[int],int|list[int]]] = []
@@ -58,18 +56,9 @@ class Board(Drawable.Drawable):
         self.player_board_fill_time = None
         self.marked_as_complete = False
 
-        self.loading_screen_init()
+        # self.loading_screen_init()
         generation_thread = threading.Thread(target=self.get_board_from_seed)
         generation_thread.start()
-        self.summoned_buttons = False
-
-    def loading_screen_init(self) -> None:
-        self.loading_start_time = time.time()
-        padding_amount = self.display_size * 0.04
-        loading_tile_size = LOADING_TILE_SIZE * min(self.display_size *  max(self.size) + padding_amount, self.display_size *  max(self.size) + padding_amount)
-        self.loading_tile = Tile.Tile(0, loading_tile_size, self.colors, False, 2, self.loading_opacity.get())
-        self.loading_tile.previous_value = None
-        self.loading_text = Fonts.loading_screen.render("Loading", True, Colors.font)
 
     def get_board_from_seed(self) -> list[int]:
         self.full_board, self.empty_board, self.other_data, self.tiles = None, None, None, None
@@ -82,9 +71,8 @@ class Board(Drawable.Drawable):
             self.player_board = [(DEFAULT[:] if value == 0 else [value]) for value in self.empty_board]
         self.init_tiles()
         
-        self.loading_opacity.set(0.0, LOADING_FADE_OUT_TIME)
-        self.board_opacity.set(1.0, BOARD_FADE_IN_TIME)
         self.is_finished_loading = True
+        self.children.append(ButtonPanel.ButtonPanel([("close.png", (self.button_close,)), ("history.png", (self.button_undo,)), ("eye.png", (self.button_hint,))], self.position[1] + self.pixel_size, self.window_size[1], self.position[0], self.position[0] + self.pixel_size))
 
     def get_lock_surface(self) -> pygame.Surface:
         '''Returns a copy of the lock texture, sized and opacitized correctly.'''
@@ -110,53 +98,24 @@ class Board(Drawable.Drawable):
                 start_progress = 1.0
                 can_modify = False
                 is_locked = True
-            self.tiles.append(Tile.Tile(index, self.display_size, self.player_board[index], is_even, self.colors, current_time, start_progress, is_locked, can_modify, self.show_locks, lock_surface))
+            tile = Tile.Tile(index, self.display_size, self.player_board[index], is_even, self.colors, current_time, start_progress, is_locked, can_modify, self.show_locks, lock_surface)
+            x = index % self.size[0]
+            y = index // self.size[0]
+            tile.position = (self.position[0] + x * self.display_size, self.position[1] + y * self.display_size)
+            # tile.set_alpha(255 * self.opacity.get(current_time))
+            self.tiles.append(tile)
+        self.children.extend(self.tiles)
 
     def display(self) -> pygame.Surface:
-        padding_amount = self.display_size * 0.04
-        if not self.is_finished_loading:
-            largest_size = max(self.size)
-            surface_size = (self.display_size * largest_size + padding_amount, self.display_size * largest_size + padding_amount)
-        else:
-            surface_size = (self.display_size * self.size[0] + padding_amount, self.display_size * self.size[1] + padding_amount)
-
         current_time = time.time()
-        board_opacity = self.board_opacity.get(current_time)
-        surface = pygame.Surface(surface_size, pygame.SRCALPHA)
-        # surface.set_alpha(board_opacity * 255)
-        for button in self.buttons: button.surface.set_alpha(board_opacity * 255)
-        surface.fill(Colors.background)
-
+        opacity = self.opacity.get(current_time)
         if self.is_finished_loading:
             for index in range(self.size[0] * self.size[1]):
-                x = index % self.size[0]
-                y = index // self.size[0]
-                tile_surface_requirements = self.tiles[index].tick(current_time)
-                tile_surface = self.tiles[index].display(tile_surface_requirements, current_time)
-                tile_surface.set_alpha(board_opacity * 255)
-                
+                tile = self.tiles[index]
+                tile_surface_requirements = tile.get_conditions(current_time)
+                tile.reload_for_board(tile_surface_requirements, current_time)
                 self.tiles[index].last_tick_time = current_time
-                surface.blit(tile_surface, (x*self.display_size, y*self.display_size))
-        
-        loading_opacity = self.loading_opacity.get(current_time)
-        if loading_opacity != 0.0:
-            self.__display_loading_screen(current_time, surface_size, surface, loading_opacity)
-        return surface
-
-    def __display_loading_screen(self, current_time:float, surface_size:tuple[float,float], surface:pygame.Surface, opacity:float) -> None:
-        center_x = surface_size[0] / 2; center_y = surface_size[1] * 1.25 / 2
-        smallest_size = min(surface_size)
-        tile_size = smallest_size * LOADING_TILE_SIZE
-        corner_x_tile = center_x - (tile_size / 2); corner_y_tile = center_y - (tile_size / 2)
-        loading_tile_surface = self.loading_tile.display_loading(current_time - self.loading_start_time)
-        loading_tile_surface.set_alpha(opacity * 255)
-        surface.blit(loading_tile_surface, (corner_x_tile, corner_y_tile))
-
-        center_x = surface_size[0] / 2; center_y = surface_size[1] * 0.5 / 2
-        text_size = self.loading_text.get_size()
-        corner_x_text = center_x - (text_size[0] / 2); corner_y_text = center_y - (text_size[1] / 2)
-        self.loading_text.set_alpha(opacity * 255)
-        surface.blit(self.loading_text, (corner_x_text, corner_y_text))
+        self.set_alpha(opacity * 255)
 
     def tile_is_empty(self, tile) -> bool:
         if tile == 0: return True
@@ -185,8 +144,10 @@ class Board(Drawable.Drawable):
         expanded_player_board = LU.expand_board(self.colors, self.player_board) if isinstance(self.player_board[0], int) else self.player_board
         expanded_full_board = LU.expand_board(self.colors, self.full_board) if isinstance(self.full_board[0], int) else self.full_board
         if LU.boards_match(expanded_player_board, expanded_full_board):
-            self.board_opacity.set(0.0, BOARD_FADE_OUT_TIME_COMPLETE)
-            for button in self.buttons: button.enabled = False
+            self.opacity.set(0.0, BOARD_FADE_OUT_TIME_COMPLETE)
+            for child in self.children:
+                if isinstance(child, Button.Button):
+                    child.enabled = False
             for tile in self.tiles:
                 tile.can_modify = False
         else:
@@ -194,8 +155,10 @@ class Board(Drawable.Drawable):
             self.highlight(tile_indexes)
 
     def button_close(self) -> None:
-        self.board_opacity.set(0.0, BOARD_FADE_OUT_TIME_CLOSE)
-        for button in self.buttons: button.enabled = False
+        self.opacity.set(0.0, BOARD_FADE_OUT_TIME_CLOSE)
+        for child in self.children:
+            if isinstance(child, Button.Button):
+                child.enabled = False
         for tile in self.tiles:
             tile.can_modify = False
 
@@ -315,40 +278,9 @@ class Board(Drawable.Drawable):
                 case pygame.MOUSEMOTION: mouse_motion()
                 case pygame.WINDOWLEAVE: mouse_leave()
         
-        # if self.is_complete: self.is_fading_out = (current_time - self.completion_time > COMPLETION_WAIT_TIME)
-        # if self.is_fading_out and current_time - self.completion_time > COMPLETION_WAIT_TIME + BOARD_FADE_OUT_TIME_COMPLETE:
-        if self.is_finished_loading and self.board_opacity.is_finished() and self.board_opacity.get(current_time) == 0.0:
+        if self.is_finished_loading and self.opacity.is_finished() and self.opacity.get(current_time) == 0.0:
             self.should_destroy = True
-            for button in self.buttons:
-                button.should_destroy = True
-        # elif self.is_closing and current_time - self.close_time > BOARD_FADE_OUT_TIME_CLOSE:
-        #     self.should_destroy = True
-        #     for button in self.buttons:
-        #         button.should_destroy = True
-        def scale_texture(surface:pygame.Surface) -> pygame.Surface:
-            return pygame.transform.scale_by(surface, self.window_size[1] / 900)
-        # if self.player_board_fill_time is not None: print(current_time - self.player_board_fill_time)
+            for child in self.children:
+                child.should_destroy = True
         if self.player_board_is_full and not self.marked_as_complete and current_time - self.player_board_fill_time >= COMPLETION_WAIT_TIME:
             self.mark_as_complete()
-        if self.is_finished_loading and not self.summoned_buttons:
-            self.summoned_buttons = True
-            buttons = [
-                Button.Button(scale_texture(Textures.textures["close.png"]), screen_position, None, (self.button_close,)),
-                Button.Button(scale_texture(Textures.textures["history.png"]), screen_position, None, (self.button_undo,)),
-                Button.Button(scale_texture(Textures.textures["eye.png"]), screen_position, None, (self.button_hint,))
-                ]
-
-            sum_of_button_width = sum((button.surface.get_size()[0] for button in buttons))
-            spacing = (self.pixel_size - sum_of_button_width) / (len(buttons) + 1)
-            x = screen_position[0]
-            for button in buttons:
-                if self.window_size is None:
-                    y = screen_position[1] + self.pixel_size + 12
-                else:
-                    y = int((screen_position[1] + self.pixel_size + self.window_size[1]) / 2 - button.surface.get_size()[1] / 2)
-                x += spacing
-                button.position = (x, y)
-                x += button.surface.get_size()[0]
-
-            self.buttons = buttons
-            return [(button, 1) for button in self.buttons]

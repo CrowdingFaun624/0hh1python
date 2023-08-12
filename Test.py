@@ -193,9 +193,9 @@ def test_level_solver() -> None:
 
 if __name__ == "__main__":
     # time_test_rectangle()
-    # time_test(hard_mode=True)
+    time_test(hard_mode=True)
     # time_distribution(12, 8, 3)
-    get_seed_hashes(6, colors=2, hard_mode=True, file="C:/Users/ander/Downloads/0hh1_6_2_without_change.json")
+    # get_seed_hashes(6, colors=2, hard_mode=True, file="C:/Users/ander/Downloads/0hh1_6_2_without_change.json")
     # test_a_lot()
     # time_distribution(12, file="C:/Users/ander/Downloads/0hh1_12_distributions.json")
     # test_level_solver()

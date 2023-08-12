@@ -14,7 +14,7 @@ except ImportError:
 def grid_is_valid(size:tuple[int,int], colors:int, y_position:int, max_per_column:int, tiles:list[int], is_final:bool) -> bool:
     already_columns:list[list[int]] = []
     for index in range(size[0]):
-        column = get_column(size, tiles, index)
+        column = get_column(size, tiles, index) # TODO: remove functions `get_column` and `is_invalid_list` and just put them into this function.
         if is_invalid_list(colors, y_position, max_per_column, column): return False
         elif is_final:
             if column in already_columns: return False # TODO: this line is probably very expensive.
@@ -38,7 +38,7 @@ def is_invalid_string(colors:int, max_per_row:int, regular_expression:re.Pattern
 def is_invalid_list(colors:int, y_position:int, max_per_column:int, column:list[int]) -> bool:
     '''Detects the invalidity of a row or column if empty is 0, red is 1, and blue is 2'''
     if y_position >= 2 and (column[y_position] != -1 and column[y_position] == column[y_position-1] and column[y_position] == column[y_position-2]): return True
-    for color in range(colors):
+    for color in range(colors): # TODO: when a row is added/removed from 
         if column.count(color) > max_per_column: return True
     return False
 
@@ -111,7 +111,7 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
             clear_row_from_tiles(size, tiles, valid_rows, y_position)
             if row_tries[y_position] >= len(valid_rows):
                 this_state = tuple([tuple(valid_row) for valid_row in valid_rows])
-                if this_state in previous_states: random.shuffle(valid_rows)
+                if this_state in previous_states: random.shuffle(valid_rows) # TODO: this could be a potentially slow algorithm for queues. See https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle
                 previous_states.add(this_state)
                 row_tries[y_position] = 0
                 for remove_index in range(1, y_position):
