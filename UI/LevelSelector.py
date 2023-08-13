@@ -32,7 +32,7 @@ class LevelSelector(Drawable.Drawable):
         self.opacity = Animation.Animation(1.0, 0.0, FADE_TIME, Bezier.ease_in)
         self.surface = self.get_surface()
         if children is None: children = []
-        button_panel = ButtonPanel.ButtonPanel([("cog.png", (self.settings_function,[self]))], self.position[1] + self.surface.get_size()[1], self.display_size[1], self.position[0], self.position[0] + self.surface.get_size()[0])
+        button_panel = ButtonPanel.ButtonPanel([("cog", (self.settings_function,[self]))], self.position[1] + self.surface.get_size()[1], self.display_size[1], self.position[0], self.position[0] + self.surface.get_size()[0])
         super().__init__(self.surface, self.position, restore_objects, children + [button_panel])
 
     def calculate_sizes(self) -> None:
@@ -85,9 +85,9 @@ class LevelSelector(Drawable.Drawable):
         for tile, position in self.tiles_positions:
             color, level, display_color, x, y = tile; x_position, y_position = position
             is_even = is_even = (x + y) % 2 == 1
-            tile_object = Tile.Tile(0, self.tile_size, display_color, is_even, 2, current_time)
+            tile_object = Tile.Tile(0, self.tile_size, display_color, is_even, 2, current_time, mode="static")
             surface.blit(tile_object.surface, (x_position, y_position))
-            font_surface = font.render(str(level), True, Colors.font)
+            font_surface = font.render(str(level), True, Colors.get("font.tile"))
             font_size = font_surface.get_size()
             font_x, font_y = (self.tile_size / 2 - font_size[0] / 2, self.tile_size / 2 - font_size[1] / 2)
             surface.blit(font_surface, (x_position + font_x, y_position + font_y)) # TODO: font vertical positioning is messed up.
@@ -106,6 +106,10 @@ class LevelSelector(Drawable.Drawable):
             if isinstance(child, Button.Button): child.enabled = True
         self.has_returned_level = False
         self.opacity.set(1.0)
+
+    def reload(self, current_time:float) -> None:
+        self.surface = self.get_surface()
+        return super().reload(current_time)
 
     def settings_button(self) -> list[tuple[Drawable.Drawable,int]]:
         self.opacity.set(0.0)
@@ -139,9 +143,6 @@ class LevelSelector(Drawable.Drawable):
         
         current_time = time.time()
         if self.is_fading_out and self.opacity.get(current_time) == 0.0: self.should_destroy = True
-
         if self.is_fading_out and not self.has_returned_level and self.board_settings is not None:
             self.has_returned_level = True
-
-
             return self.exit_function(self)

@@ -13,7 +13,7 @@ FADE_OUT_TIME = 0.1
 
 class Intro(Drawable.Drawable):
     def __init__(self, display_size:tuple[int,int], exit_function:Callable[["Intro"],list[tuple[Drawable.Drawable,int]]]) -> None:
-        surface = pygame.transform.scale(Textures.textures["logo_1024.png"], (min(display_size), min(display_size)))
+        surface = pygame.transform.scale(Textures.get("logo_1024"), (min(display_size), min(display_size)))
         self.opacity = Animation.Animation(1.0, 0.0, FADE_IN_TIME, Bezier.ease_in)
         self.exit_function = exit_function
         super().__init__(surface, (0, 0))

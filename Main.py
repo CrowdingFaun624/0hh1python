@@ -1,8 +1,9 @@
+import time
+
 import pygame
 
 import UI.Colors as Colors
 import UI.Drawable as Drawable
-# import UI.Intro as Intro
 import UI.Textures as Textures
 import UI.UIManager as UIManager
 
@@ -26,9 +27,10 @@ def get_children(object:Drawable.Drawable) -> list[Drawable.Drawable]:
 pygame.init()
 DISPLAY_SIZE = (900, 900)
 screen = pygame.display.set_mode(DISPLAY_SIZE)
-pygame.display.set_icon(Textures.textures["logo_32.png"])
+pygame.display.set_icon(Textures.get("logo_32"))
 pygame.display.set_caption("0h h1")
 clock = pygame.time.Clock()
+UIManager.reload_carrier = [False]
 
 objects:list[Drawable.Drawable] = [
     UIManager.get_main_object()
@@ -43,7 +45,7 @@ while running:
         # print(event)
         events.append(event)
     
-    screen.fill(Colors.background)
+    screen.fill(Colors.get("background"))
     new_objects:list[Drawable.Drawable] = []
     destroy_objects:list[int] = []
     for index, object in enumerate(objects):
@@ -60,12 +62,14 @@ while running:
     for index in reversed(destroy_objects): # reversed so it doesn't do weird stuff with indexes
         del objects[index]
     extend_objects(objects, new_objects)
+    if UIManager.reload_carrier[0]:
+        UIManager.reload_carrier[0] = False
+        for object in objects:
+            object.reload(time.time())
 
-
-    # hello_world_surface = Fonts.molle.render("Hello, world", True, Colors.font)
-    # screen.blit(hello_world_surface, (100 + 2 * Animations.animate(Animations.wiggle, 0.5, lambda _1, _2, x: x, (ticks/60)%1, True), 100))
     pygame.display.flip()
     clock.tick(60)
     # print(clock.get_fps())
+    # print(len(objects), objects)
 
 pygame.quit()

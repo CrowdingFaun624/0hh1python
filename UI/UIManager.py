@@ -8,6 +8,7 @@ import UI.LevelSelector as LevelSelector
 import UI.LoadingScreen as LoadingScreen
 import UI.SettingsMenu as SettingsMenu
 
+reload_carrier = None # set to `[False]` by Main.py
 
 def get_main_object() -> Drawable.Drawable:
     return Intro.Intro(pygame.display.get_window_size(), exit_intro)
@@ -34,4 +35,4 @@ def enter_settings_from_level_selector(level_selector:LevelSelector.LevelSelecto
     level_selector.is_fading_out = True
     for child in level_selector.children:
         if isinstance(child, Button.Button): child.enabled = False
-    return [(SettingsMenu.SettingsMenu(level_selector.display_size, restore_objects=[(level_selector, -1)]), 1)]
+    return [(SettingsMenu.SettingsMenu(level_selector.display_size, restore_objects=[(level_selector, -1)], reload_carrier=reload_carrier), 1)]

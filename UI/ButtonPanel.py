@@ -15,7 +15,7 @@ class ButtonPanel(Drawable.Drawable):
         if left_constraint > right_constraint: raise ValueError("Left constraint is greater than right constraint!")
         vertical_space = bottom_constraint - top_constraint
         horizontal_space = right_constraint - left_constraint
-        buttons = [Button.Button(scale_texture(Textures.textures[button[0]] if isinstance(button[0], str) else button[0]), (0, 0), None, left_click_action=button[1]) for button in button_parameters]
+        buttons = [Button.Button(scale_texture(Textures.get(button[0]) if isinstance(button[0], str) else button[0]), (0, 0), None, left_click_action=button[1]) for button in button_parameters]
         sum_of_button_width = sum((button.surface.get_size()[0] for button in buttons))
         spacing = (horizontal_space - sum_of_button_width) / (len(buttons) + 1)
         x = left_constraint

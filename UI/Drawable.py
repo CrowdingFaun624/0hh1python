@@ -26,6 +26,13 @@ class Drawable():
     def restore(self) -> None:
         self.should_destroy = False
 
+    def reload(self, current_time:float) -> None:
+        '''Used to force everything to redraw itself due to a theme change or something.'''
+        for child in self.children:
+            child.reload(current_time)
+        for object in self.restore_objects:
+            object[0].reload(current_time)
+
     def destroy(self) -> list[tuple["Drawable",int]]:
         '''Used to add additional elements to the objects list when an element is destroyed.
         It will also return `restore_objects`.

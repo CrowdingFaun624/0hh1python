@@ -29,22 +29,28 @@ class LoadingScreen(Drawable.Drawable):
         self.loading_start_time = time.time()
         self.opacity = Animation.Animation(1.0, 0.0, LOADING_FADE_IN_TIME, Bezier.ease_in)
 
+        self.calculate_sizes()
+        if children is None: children = []
+        super().__init__(surface, position, restore_objects, children + [self.loading_tile, self.loading_text])
+
+    def calculate_sizes(self) -> None:
         loading_tile_size = LOADING_TILE_SIZE * min(self.board_size)
-        self.loading_tile = Tile.Tile(0, loading_tile_size, self.board.colors, False, 2, self.opacity.get())
+        self.loading_tile = Tile.Tile(0, loading_tile_size, self.board.colors, False, 2, self.opacity.get(), mode="loading")
         self.loading_tile.previous_value = None
-        loading_text = Fonts.loading_screen.render("Loading", True, Colors.font)
+        loading_text = Fonts.loading_screen.render("Loading", True, Colors.get("font"))
         loading_text_size = loading_text.get_size()
         loading_text_position = (self.position[0] + (self.board_size[0] - loading_text_size[0]) / 2, self.position[1] + (self.board_size[1] * 0.25 - loading_text_size[1]) / 2)
         self.loading_text = Drawable.Drawable(loading_text, loading_text_position)
-        
-        if children is None: children = []
-        super().__init__(surface, position, restore_objects, children + [self.loading_tile, self.loading_text])
 
     def display(self) -> pygame.Surface|None:
         self.loading_tile.surface = self.loading_tile.reload_for_loading(self.loading_start_time - time.time())
         loading_tile_size = self.loading_tile.surface.get_size()
         self.loading_tile.position = (self.position[0] + (self.board_size[0] - loading_tile_size[0]) / 2, self.position[1] + (self.board_size[1] - loading_tile_size[1]) / 2)
         self.set_alpha(255 * self.opacity.get())
+    
+    def reload(self, current_time:float) -> None:
+        self.calculate_sizes()
+        return super().reload(current_time)
 
     def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> list[tuple[Drawable.Drawable]]|None:
         if self.board.is_finished_loading and not self.is_fading:

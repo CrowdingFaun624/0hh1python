@@ -10,13 +10,12 @@ import LevelCreator.LevelHinter as LevelHinter
 import LevelCreator.LevelUtilities as LU
 import UI.Button as Button
 import UI.ButtonPanel as ButtonPanel
-import UI.Colors as Colors
 import UI.Drawable as Drawable
-import UI.Fonts as Fonts
 import UI.Textures as Textures
 import UI.Tile as Tile
 import Utilities.Animation as Animation
 import Utilities.Bezier as Bezier
+import Utilities.Settings as Settings
 
 CLICK_ACTION_LOCKED = "locked"
 CLICK_ACTION_SUCCESS = "success"
@@ -63,7 +62,7 @@ class Board(Drawable.Drawable):
     def get_board_from_seed(self) -> list[int]:
         self.full_board, self.empty_board, self.other_data, self.tiles = None, None, None, None
         # return
-        self.full_board, self.empty_board, self.other_data = LevelCreator.generate(self.size, self.seed, self.colors, True)
+        self.full_board, self.empty_board, self.other_data = LevelCreator.generate(self.size, self.seed, self.colors, Settings.settings["hard_mode"])
         if self.colors == 2:
             self.player_board = self.empty_board[:]
         else:
@@ -72,11 +71,14 @@ class Board(Drawable.Drawable):
         self.init_tiles()
         
         self.is_finished_loading = True
-        self.children.append(ButtonPanel.ButtonPanel([("close.png", (self.button_close,)), ("history.png", (self.button_undo,)), ("eye.png", (self.button_hint,))], self.position[1] + self.pixel_size, self.window_size[1], self.position[0], self.position[0] + self.pixel_size))
+        self.children.extend(self.get_additional_children())
+    
+    def get_additional_children(self) -> list[Drawable.Drawable]:
+        return [ButtonPanel.ButtonPanel([("close", (self.button_close,)), ("history", (self.button_undo,)), ("eye", (self.button_hint,))], self.position[1] + self.pixel_size, self.window_size[1], self.position[0], self.position[0] + self.pixel_size)]
 
     def get_lock_surface(self) -> pygame.Surface:
         '''Returns a copy of the lock texture, sized and opacitized correctly.'''
-        lock_texture = Textures.textures["lock.png"]
+        lock_texture = Textures.get("lock")
         lock_size = 0.4 * self.display_size
         lock_surface = pygame.transform.scale(lock_texture, (lock_size, lock_size))
         lock_surface.set_alpha(51) # 0.2 * 255
@@ -98,7 +100,7 @@ class Board(Drawable.Drawable):
                 start_progress = 1.0
                 can_modify = False
                 is_locked = True
-            tile = Tile.Tile(index, self.display_size, self.player_board[index], is_even, self.colors, current_time, start_progress, is_locked, can_modify, self.show_locks, lock_surface)
+            tile = Tile.Tile(index, self.display_size, self.player_board[index], is_even, self.colors, current_time, start_progress, is_locked, can_modify, self.show_locks, lock_surface, mode="board")
             x = index % self.size[0]
             y = index // self.size[0]
             tile.position = (self.position[0] + x * self.display_size, self.position[1] + y * self.display_size)
@@ -116,6 +118,12 @@ class Board(Drawable.Drawable):
                 tile.reload_for_board(tile_surface_requirements, current_time)
                 self.tiles[index].last_tick_time = current_time
         self.set_alpha(opacity * 255)
+
+    def reload(self, current_time:float) -> None:
+        # self.children = []
+        # self.init_tiles()
+        # self.children.extend(self.get_additional_children())
+        return super().reload(current_time)
 
     def tile_is_empty(self, tile) -> bool:
         if tile == 0: return True

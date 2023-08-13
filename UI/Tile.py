@@ -10,20 +10,8 @@ import Utilities.Bezier as Bezier
 LOCK_SHAKE_TIME = 0.5 # when locked tile is interacted with
 TRANSITION_TIME = 0.2 # from one color to another
 
-COLORS = {
-    (0, False): Colors.tile0,
-    (0, True): Colors.tile0,
-    (1, False): Colors.tile1_odd,
-    (1, True): Colors.tile1_even,
-    (2, False): Colors.tile2_odd,
-    (2, True): Colors.tile2_even,
-    (3, False): Colors.tile3_odd,
-    (3, True): Colors.tile3_even,
-    (4, False): Colors.tile4_odd,
-    (4, True): Colors.tile4_even
-}
 class Tile(Drawable.Drawable):
-    def __init__(self, index:int, size:int, value:int|list[int], is_even:bool, colors:int, current_time:float, start_progress:float=1.0, is_locked:bool=False, can_modify:bool=True, show_lock:bool=False, lock_surface:pygame.Surface|None=None) -> None:
+    def __init__(self, index:int, size:int, value:int|list[int], is_even:bool, colors:int, current_time:float, start_progress:float=1.0, is_locked:bool=False, can_modify:bool=True, show_lock:bool=False, lock_surface:pygame.Surface|None=None, mode:str|None=None) -> None:
         self.index = index
         self.size = size
         self.value = value
@@ -33,9 +21,9 @@ class Tile(Drawable.Drawable):
 
         self.click_time = 0.0
         if colors == 2:
-            current_color = COLORS[(value, is_even)]
+            current_color = self.get_color(value, is_even)
         else:
-            current_color = COLORS[(value[0], is_even)] if len(value) == 1 else COLORS[(0, is_even)]
+            current_color = self.get_color(value[0], is_even) if len(value) == 1 else self.get_color(0, is_even)
             self.section_opacities:list[Animation.Animation] = [Animation.Animation(cur := (self.get_section_opacity(color) if color in value else 0.0), cur, TRANSITION_TIME, Bezier.ease_out) for color in range(1, colors + 1)]
             self.multicolor_transition = Animation.Animation(float(self.is_locked), float(self.is_locked), TRANSITION_TIME, Bezier.ease_out)
         color_tuple = (current_color.r, current_color.g, current_color.b)
@@ -65,12 +53,27 @@ class Tile(Drawable.Drawable):
         self.multicolor_mask_rotation = 0.0
         self.highlight_mask = self.__get_highlight_mask()
         self.highlight_mask_rotation = 0.0
+        self.mode = mode # used to determine which function to use when reloading.
         super().__init__()
         self.reload_for_board(None, current_time, True)
 
+    def get_color(self, value:int, parity:bool) -> pygame.Color:
+        match value, parity:
+            case 0, False: return Colors.get("tile.0")
+            case 0, True:  return Colors.get("tile.0")
+            case 1, False: return Colors.get("tile.1_odd")
+            case 1, True:  return Colors.get("tile.1_even")
+            case 2, False: return Colors.get("tile.2_odd")
+            case 2, True:  return Colors.get("tile.2_even")
+            case 3, False: return Colors.get("tile.3_odd")
+            case 3, True:  return Colors.get("tile.3_even")
+            case 4, False: return Colors.get("tile.4_odd")
+            case 4, True:  return Colors.get("tile.4_even")
+            case _: raise ValueError("Unsupported color/parity %i %b" % (value, parity))
+
     def set_value(self, value:int) -> None:
         self.value = value
-        current_color = COLORS[(value, self.is_even)]
+        current_color = self.get_color(value, self.is_even)
         self.color.set((current_color.r, current_color.g, current_color.b))
     
     def __set_multicolor_transition_target(self) -> float:
@@ -102,8 +105,8 @@ class Tile(Drawable.Drawable):
             self.section_opacities[section].set(self.get_section_opacity(section + 1))
         if len(self.value) == 1: self.__set_multicolor_transition_target() # self.multicolor_transition.set(1.0)
         else: self.multicolor_transition.set(0.0)
-        if len(self.value) == 1: current_color = COLORS[(self.value[0], self.is_even)]
-        else: current_color = COLORS[(0, self.is_even)]
+        if len(self.value) == 1: current_color = self.get_color(self.value[0], self.is_even)
+        else: current_color = self.get_color(0, self.is_even)
         self.color.set((current_color.r, current_color.g, current_color.b))
     
     def highlight(self, current_time:float) -> None:
@@ -156,6 +159,13 @@ class Tile(Drawable.Drawable):
             self.surface = new_surface
             self.current_surface_conditions = required_surface_conditions
             self.surface = new_surface
+
+    def reload(self, current_time:float) -> None:
+        match self.mode:
+            case "board": self.reload_for_board(None, 0.0, True)
+            case "loading": self.reload_for_loading()
+            case "static": self.surface = self.__get_surface_normal(current_time)
+        super().reload()
 
     def get_new_surface(self, current_time:float) -> pygame.Surface:
         if self.colors == 2:
@@ -213,15 +223,6 @@ class Tile(Drawable.Drawable):
         def get_multicolor() -> pygame.Surface:
             return self.__draw_multicolor(padding_size, self.colors, current_time)
         def get_full_color(value:int, previous_value:int, click_time:float|None=None) -> pygame.Surface:
-            # if click_time is None: click_time = self.click_time
-            # if self.click_type == "locked": color_ratio = 1.0
-            # else:
-            #     if previous_value is None or current_time - click_time > TRANSITION_TIME:
-            #         color_ratio = 1.0
-            #     else: color_ratio = self.__get_color_ratio(current_time, TRANSITION_TIME, click_time)
-            # current_color = self.__get_tile_color(value)
-            # previous_color = self.__get_tile_color(previous_value)
-            # color = self.__blend_colors(current_color, previous_color, color_ratio)
             color = self.color.get(current_time)
             color = pygame.Color(int(color[0]), int(color[1]), int(color[2]))
             return self.__draw_body(padding_size, border_radius, color)
@@ -275,15 +276,10 @@ class Tile(Drawable.Drawable):
         new_g = int(color1_g * ratio + color2_g * (1 - ratio))
         new_b = int(color1_b * ratio + color2_b * (1 - ratio))
         return pygame.Color(new_r, new_g, new_b)
-    def __get_color_ratio(self, current_time:float, time:float, click_time:float) -> float:
-        '''Gets the ratio that two colors should be averaged together with'''
-        color_time = (current_time - click_time) / time
-        ratio = Bezier.ease_out(0.0, 1.0, color_time)
-        return ratio
 
     def __get_tile_color(self, value:int|None=None) -> pygame.Color:
         value = self.value if value is None else value
-        return COLORS[(value, self.is_even)]
+        return self.get_color(value, self.is_even)
 
     def __get_multicolor_mask(self) -> pygame.Surface:
         padding_size = 0.04 * self.size
@@ -299,11 +295,13 @@ class Tile(Drawable.Drawable):
         padding_size = 0.04 * self.size
         border_radius = self.size * 0.1
         mask_surface = pygame.Surface((self.size, self.size))
-        mask_surface.fill((0, 0, 0))
-        base_surface = self.__draw_body(padding_size, border_radius, (255, 255, 255))
+        color = Colors.get("tile.highlight")
+        mask_color = (255, 0, 0) if (color.r, color.g, color.b) == (0, 0, 0) else (0, 0, 0)
+        mask_surface.fill(mask_color)
+        base_surface = self.__draw_body(padding_size, border_radius, color)
         mask_surface.blit(base_surface, (0, 0))
         if border_radius > 3: # rounded interior
-            interior_surface = self.__draw_body(padding_size + 3, border_radius, (0, 0, 0))
+            interior_surface = self.__draw_body(padding_size + 3, border_radius, mask_color)
         else: # square interior
             interior_surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
             polygon_sequence = [
@@ -312,9 +310,9 @@ class Tile(Drawable.Drawable):
                 self.__position(self.size - (padding_size + 3), self.size - (padding_size + 3)),
                 self.__position(padding_size + 3, self.size - (padding_size + 3))
             ]
-            pygame.draw.polygon(interior_surface, (0, 0, 0), polygon_sequence)
+            pygame.draw.polygon(interior_surface, mask_color, polygon_sequence)
         mask_surface.blit(interior_surface, (0, 0))
-        mask_surface.set_colorkey((0, 0, 0))
+        mask_surface.set_colorkey(mask_color)
         return mask_surface
 
     def __draw_body(self, padding_size:float, border_radius:float, color:pygame.Color) -> pygame.Surface:
@@ -355,7 +353,7 @@ class Tile(Drawable.Drawable):
             color = self.__blend_colors(full_color, empty_color, self.section_opacities[index].get(current_time))
             colors.append(color)
         button_surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
-        button_surface.fill(Colors.tile0)
+        button_surface.fill(Colors.get("tile.0"))
         directions = [(math.tau / sections) * (index - 1) + (math.pi / 2) + (math.pi / sections) for index in range(sections + 1)]
         direction = directions[0]
         line_endpoints:list[tuple[float,float]] = [] # remember to allow for lines to be drawn
@@ -377,7 +375,7 @@ class Tile(Drawable.Drawable):
             direction = next_direction
             x, y = next_x, next_y
         for x, y in line_endpoints:
-            pygame.draw.line(button_surface, Colors.tile0, self.__position(center, center), self.__position(center + x, center + y), int(padding_size))
+            pygame.draw.line(button_surface, Colors.get("tile.0"), self.__position(center, center), self.__position(center + x, center + y), int(padding_size))
         
         if self.multicolor_mask_rotation != self.rotation: self.multicolor_mask = self.__get_multicolor_mask()
         button_surface.blit(self.multicolor_mask, (0, 0))
@@ -388,13 +386,13 @@ class Tile(Drawable.Drawable):
 
     def __draw_shadow(self, padding_size:float, shadow_radius:float) -> pygame.Surface:
         shadow_surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
-        pygame.draw.circle(shadow_surface, Colors.tile_shadow, self.__position(padding_size + shadow_radius, self.size - (padding_size + shadow_radius)), shadow_radius, 0, *self.__get_circle_quarters(False, True, True, False))
-        pygame.draw.circle(shadow_surface, Colors.tile_shadow, self.__position(self.size - (padding_size + shadow_radius), self.size - (padding_size + shadow_radius)), shadow_radius, 0, *self.__get_circle_quarters(True, False, False, True))
+        pygame.draw.circle(shadow_surface, Colors.get("tile.shadow"), self.__position(padding_size + shadow_radius, self.size - (padding_size + shadow_radius)), shadow_radius, 0, *self.__get_circle_quarters(False, True, True, False))
+        pygame.draw.circle(shadow_surface, Colors.get("tile.shadow"), self.__position(self.size - (padding_size + shadow_radius), self.size - (padding_size + shadow_radius)), shadow_radius, 0, *self.__get_circle_quarters(True, False, False, True))
         polygon_sequence = [
             self.__position(padding_size + shadow_radius, self.size - (padding_size + shadow_radius * 2)),
             self.__position(padding_size + shadow_radius, self.size - padding_size),
             self.__position(self.size - (padding_size + shadow_radius), self.size - padding_size),
             self.__position(self.size - (padding_size + shadow_radius), self.size - (padding_size + shadow_radius * 2))
         ]
-        pygame.draw.polygon(shadow_surface, Colors.tile_shadow, polygon_sequence)
+        pygame.draw.polygon(shadow_surface, Colors.get("tile.shadow"), polygon_sequence)
         return shadow_surface
