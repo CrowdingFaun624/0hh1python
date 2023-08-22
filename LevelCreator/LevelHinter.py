@@ -5,10 +5,11 @@ WRONG = "WRONG"
 HINT = "HINT"
 
 class Hint():
-    def __init__(self, type:str, tiles_affected:list[int], target_tile:int|None) -> None:
+    def __init__(self, type:str, tiles_affected:list[int], target_tile:int|None, is_incorrect:bool) -> None:
         self.type = type
         self.tiles_affected = tiles_affected
         self.target_tile = target_tile
+        self.is_incorrect_hint = is_incorrect
 
 def get_hint(size:tuple[int,int], colors:int, empty_board:list[list[int]|int], full_board:list[list[int]|int]) -> Hint:
     if isinstance(empty_board[0], int): empty_board:list[list[int]] = LU.expand_board(colors, empty_board)
@@ -22,6 +23,6 @@ def get_hint(size:tuple[int,int], colors:int, empty_board:list[list[int]|int], f
             print("Empty:"); LU.print_board(empty_board, size)
             raise RuntimeError("Failed to find hint for board!")
         assert isinstance(solver_result, int)
-        return Hint(HINT, dependencies[solver_result], solver_result)
+        return Hint(HINT, dependencies[solver_result], solver_result, False)
     else:
-        return Hint(WRONG, LU.get_not_matching_tiles(empty_board, full_board), None)
+        return Hint(WRONG, LU.get_not_matching_tiles(empty_board, full_board), None, True)

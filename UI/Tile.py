@@ -33,7 +33,6 @@ class Tile(Drawable.Drawable):
         self.mouse_over_start = 0.0
         self.is_mousing_over = False
         self.click_type = None
-        self.previous_value:list[int]|int|None = list(range(1, self.colors + 1)) if colors > 2 else None
         self.is_mousing_over = False
         self.can_modify = can_modify
         self.show_lock = False
@@ -58,18 +57,11 @@ class Tile(Drawable.Drawable):
         self.reload_for_board(None, current_time, True)
 
     def get_color(self, value:int, parity:bool) -> pygame.Color:
-        match value, parity:
-            case 0, False: return Colors.get("tile.0")
-            case 0, True:  return Colors.get("tile.0")
-            case 1, False: return Colors.get("tile.1_odd")
-            case 1, True:  return Colors.get("tile.1_even")
-            case 2, False: return Colors.get("tile.2_odd")
-            case 2, True:  return Colors.get("tile.2_even")
-            case 3, False: return Colors.get("tile.3_odd")
-            case 3, True:  return Colors.get("tile.3_even")
-            case 4, False: return Colors.get("tile.4_odd")
-            case 4, True:  return Colors.get("tile.4_even")
-            case _: raise ValueError("Unsupported color/parity %i %b" % (value, parity))
+        color_string = "tile.%s" % str(value)
+        if value != 0:
+            color_string += "_" + {False: "odd", True: "even"}[parity]
+        if not Colors.is_exist(color_string): raise ValueError("Unsupported color/parity %i %b (%s)" % (value, parity, color_string))
+        return Colors.get(color_string)
 
     def set_value(self, value:int) -> None:
         self.value = value
@@ -222,25 +214,20 @@ class Tile(Drawable.Drawable):
     def __get_surface_multicolor(self, current_time:float) -> pygame.Surface:
         def get_multicolor() -> pygame.Surface:
             return self.__draw_multicolor(padding_size, self.colors, current_time)
-        def get_full_color(value:int, previous_value:int, click_time:float|None=None) -> pygame.Surface:
+        def get_full_color() -> pygame.Surface:
             color = self.color.get(current_time)
             color = pygame.Color(int(color[0]), int(color[1]), int(color[2]))
             return self.__draw_body(padding_size, border_radius, color)
 
-        def single_color_to_int(tile:list[int]) -> int:
-            '''Returns the first item of the list, or 0 if it does not exist'''
-            if len(tile) == 1: return tile[0]
-            else: return 0
         padding_size = 0.04 * self.size
         tile_size = self.size - (padding_size * 2)
         border_radius = self.size * 0.1
         shadow_radius = tile_size * 0.06
         transition_progress = self.multicolor_transition.get(current_time)
-        if transition_progress == 1.0: button_surface = get_full_color(single_color_to_int(self.value), single_color_to_int(self.previous_value))
+        if transition_progress == 1.0: button_surface = get_full_color()
         elif transition_progress == 0.0: button_surface = get_multicolor()
         else:
-            current_value_single = self.value[0] if len(self.value) == 1 else self.previous_value[0]
-            full_color = get_full_color(current_value_single, current_value_single, 0.0)
+            full_color = get_full_color()
             multicolor = get_multicolor()
 
             full_color.set_alpha(255 * transition_progress)

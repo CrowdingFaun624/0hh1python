@@ -29,4 +29,5 @@ def get(name:str) -> pygame.Color:
         return color[Settings.settings["light_mode"]]
     else: return color
 
-
+def is_exist(name:str) -> bool:
+    return name in COLORS
