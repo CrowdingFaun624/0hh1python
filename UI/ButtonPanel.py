@@ -22,6 +22,14 @@ class ButtonPanel(Drawable.Drawable):
         self.calculate_positions()
         super().__init__(None, (0, 0), children=buttons)
     
+    def disable(self) -> None:
+        for button in self.children:
+            button.enabled = False
+    
+    def enable(self) -> None:
+        for button in self.children:
+            button.enabled = True
+
     def calculate_positions(self) -> None:
         horizontal_space = self.right_constraint - self.left_constraint
         sum_of_button_width = sum((button.surface.get_size()[0] for button in self.children))
