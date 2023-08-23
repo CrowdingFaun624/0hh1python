@@ -119,3 +119,9 @@ def check_for_duplicates(board:list[list[int]]) -> list[tuple[int,int]]:
             if index1 == index2: continue
             if item1 is item2: output.append((index1, index2, item1, item2))
     return output
+
+class GenerationInfo(): # for communication between threads
+    def __init__(self) -> None:
+        self.breaker = False
+        self.generation_progress = 0.0
+        self.total_clears = 0

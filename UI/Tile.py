@@ -10,6 +10,13 @@ import Utilities.Bezier as Bezier
 LOCK_SHAKE_TIME = 0.5 # when locked tile is interacted with
 TRANSITION_TIME = 0.2 # from one color to another
 
+def get_color_name(value:int, parity:bool) -> str:
+    color_string = "tile.%s" % str(value)
+    if value != 0:
+        color_string += "_" + {False: "odd", True: "even"}[parity]
+    if not Colors.is_exist(color_string): raise ValueError("Unsupported color/parity %i %b (%s)" % (value, parity, color_string))
+    return color_string
+
 class Tile(Drawable.Drawable):
     def __init__(self, index:int, size:int, value:int|list[int], is_even:bool, colors:int, current_time:float, start_progress:float=1.0, is_locked:bool=False, can_modify:bool=True, show_lock:bool=False, lock_surface:pygame.Surface|None=None, mode:str|None=None) -> None:
         self.index = index
@@ -22,9 +29,9 @@ class Tile(Drawable.Drawable):
         self.click_time = 0.0
         self.click_time_locked = 0.0
         if colors == 2:
-            current_color = self.get_color(value, is_even)
+            current_color = Colors.get(get_color_name(value, is_even))
         else:
-            current_color = self.get_color(value[0], is_even) if len(value) == 1 else self.get_color(0, is_even)
+            current_color = Colors.get(get_color_name(value[0], is_even)) if len(value) == 1 else Colors.get(get_color_name(0, is_even))
             self.section_opacities:list[Animation.Animation] = [Animation.Animation(cur := (self.get_section_opacity(color) if color in value else 0.0), cur, TRANSITION_TIME, Bezier.ease_out) for color in range(1, colors + 1)]
             self.multicolor_transition = Animation.Animation(float(self.is_locked), float(self.is_locked), TRANSITION_TIME, Bezier.ease_out)
         color_tuple = (current_color.r, current_color.g, current_color.b)
@@ -57,16 +64,9 @@ class Tile(Drawable.Drawable):
         super().__init__()
         self.reload_for_board(None, current_time, True)
 
-    def get_color(self, value:int, parity:bool) -> pygame.Color:
-        color_string = "tile.%s" % str(value)
-        if value != 0:
-            color_string += "_" + {False: "odd", True: "even"}[parity]
-        if not Colors.is_exist(color_string): raise ValueError("Unsupported color/parity %i %b (%s)" % (value, parity, color_string))
-        return Colors.get(color_string)
-
     def set_value(self, value:int) -> None:
         self.value = value
-        current_color = self.get_color(value, self.is_even)
+        current_color = Colors.get(get_color_name(value, self.is_even))
         self.color.set((current_color.r, current_color.g, current_color.b))
     
     def __set_multicolor_transition_target(self) -> float:
@@ -98,8 +98,8 @@ class Tile(Drawable.Drawable):
             self.section_opacities[section].set(self.get_section_opacity(section + 1))
         if len(self.value) == 1: self.__set_multicolor_transition_target() # self.multicolor_transition.set(1.0)
         else: self.multicolor_transition.set(0.0)
-        if len(self.value) == 1: current_color = self.get_color(self.value[0], self.is_even)
-        else: current_color = self.get_color(0, self.is_even)
+        if len(self.value) == 1: current_color = Colors.get(get_color_name(self.value[0], self.is_even))
+        else: current_color = Colors.get(get_color_name(0, self.is_even))
         self.color.set((current_color.r, current_color.g, current_color.b))
     
     def highlight(self, current_time:float) -> None:
@@ -140,9 +140,9 @@ class Tile(Drawable.Drawable):
         if self.is_highlighted: conditions.append(current_time - self.highlight_time)
         return conditions
 
-    def reload_for_loading(self, elapsed_time:float) -> pygame.Surface:
-        self.__get_rotation_loading(elapsed_time)
-        return self.__get_surface_normal(elapsed_time)
+    # def reload_for_loading(self, elapsed_time:float) -> pygame.Surface:
+    #     self.__get_rotation_loading(elapsed_time)
+    #     return self.__get_surface_normal(elapsed_time)
 
     def reload_for_board(self, required_surface_conditions:list[any], current_time:float, force_new:bool=False) -> None:
         '''Redraws the tile's surface if the conditions have changed.'''
@@ -156,7 +156,7 @@ class Tile(Drawable.Drawable):
     def reload(self, current_time:float) -> None:
         match self.mode:
             case "board": self.reload_for_board(None, 0.0, True)
-            case "loading": self.reload_for_loading()
+            # case "loading": self.reload_for_loading()
             case "static": self.surface = self.__get_surface_normal(current_time)
         super().reload()
 
@@ -266,7 +266,7 @@ class Tile(Drawable.Drawable):
 
     def __get_tile_color(self, value:int|None=None) -> pygame.Color:
         value = self.value if value is None else value
-        return self.get_color(value, self.is_even)
+        return Colors.get(get_color_name(value, self.is_even))
 
     def __get_multicolor_mask(self) -> pygame.Surface:
         padding_size = 0.04 * self.size
@@ -283,7 +283,7 @@ class Tile(Drawable.Drawable):
         border_radius = self.size * 0.1
         mask_surface = pygame.Surface((self.size, self.size))
         color = Colors.get("tile.highlight")
-        mask_color = (255, 0, 0) if (color.r, color.g, color.b) == (0, 0, 0) else (0, 0, 0)
+        mask_color = Colors.get_non_conflicting_colors([color])
         mask_surface.fill(mask_color)
         base_surface = self.__draw_body(padding_size, border_radius, color)
         mask_surface.blit(base_surface, (0, 0))

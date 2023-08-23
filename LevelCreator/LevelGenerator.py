@@ -1,4 +1,5 @@
 import collections
+import math
 import os
 import random
 import re
@@ -78,7 +79,7 @@ def fetch_cache(size:tuple[int,int], colors:int) -> list[list[int]]|None:
 def int_to_string(number:int, base:int) -> str: # https://stackoverflow.com/questions/2267362/how-to-convert-an-integer-to-a-string-in-any-base
     return binary_repr(number) if base == 2 else base_repr(number, base)
 
-def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[int]:
+def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2, gen_info:LU.GenerationInfo|None=None) -> list[int]:
     # wave collapse algorithm I think
     if seed is None: seed = random.randint(-2147483648, 2147483647)
     if isinstance(size, int): size = (size, size)
@@ -96,13 +97,13 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
     tiles:list[int] = [-1 for i in range(size[0] * size[1])] # output
     row_tries:list[int] = [0] * size[1]
     previous_states:set[str] = set()
+    total_clears = 0
+    expected_total_clears = (20 * (10 ** -colors))*math.exp((size[1]/colors)*(2.2 * colors - 2.6))
     while y_position < size[1]:
         # LevelPrinter.print_board([tile + 1 for tile in tiles], size)
         row_tries[y_position] += 1
         
         current_row = valid_rows.popleft()
-        # print(seed, size, row_tries, y_position)
-        # for index, x_position in enumerate(range(y_position * size[0],(y_position + 1) * size[0])): tiles[x_position] = current_row[index]
         tiles[y_position * size[0]:(y_position + 1) * size[0]] = current_row
 
         if grid_is_valid(size, colors, y_position, max_per_column, tiles, y_position == size[1] - 1):
@@ -118,6 +119,11 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
                     clear_row_from_tiles(size, tiles, valid_rows, remove_index)
                     row_tries[remove_index] = 0
                 y_position = 1
+            if gen_info is not None:
+                if gen_info.breaker: return None
+                gen_info.generation_progress = ((-expected_total_clears / (total_clears + expected_total_clears)) + 1.0) * 0.9
+                gen_info.total_clears += 1
+            total_clears += 1
     random.seed(after_seed)
     tiles = [tile + 1 for tile in tiles]
     return tiles

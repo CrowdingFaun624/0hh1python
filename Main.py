@@ -70,6 +70,8 @@ while running:
     pygame.display.flip()
     clock.tick(60)
     # print(clock.get_fps())
-    # print(len(objects), objects)
+
+for object in objects:
+    object.delete()
 
 pygame.quit()

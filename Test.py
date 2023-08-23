@@ -53,12 +53,15 @@ def time_test(specified_colors:list[int]|None=None, hard_mode:bool=True) -> dict
             all_times_generator:list[float] = []
             all_times_solver:list[float] = []
             all_qualities:list[int] = []
+            all_total_clears:list[int] = []
             for i in range(REPEAT_COUNT[colors][size]):
                 percentage = round(i / REPEAT_COUNT[colors][size] * 100)
                 print(size, ": ", percentage, "%, seed ", i, sep="")
                 start_time = time.perf_counter()
-                full, empty, other_data = LevelCreator.generate(size, i, colors, hard_mode)
+                gen_info = LU.GenerationInfo()
+                full, empty, other_data = LevelCreator.generate(size, i, colors, hard_mode, gen_info=gen_info)
                 all_qualities.append(other_data["quality"])
+                all_total_clears.append(gen_info.total_clears)
                 end_time = time.perf_counter()
                 time_elapsed = end_time - start_time
                 all_times_generator.append(time_elapsed)

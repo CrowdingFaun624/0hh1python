@@ -11,6 +11,7 @@ josefin = pygame.font.Font(JOSEFINE_FILE, 95)
 molle = pygame.font.Font(MOLLE_FILE, 95)
 
 loading_screen = pygame.font.Font(MOLLE_FILE, 115)
+loading_screen_progress = pygame.font.Font(JOSEFINE_FILE, 15)
 
 other_fonts:dict[tuple[str,int],pygame.font.Font] = {} # for fonts that can change in size.
 

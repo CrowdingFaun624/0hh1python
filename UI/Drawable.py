@@ -43,6 +43,13 @@ class Drawable():
         self.restore_objects = []
         return return_stuff
 
+    def delete(self) -> None:
+        '''Frees up the object's stuff and things. Is called when the program is terminated.'''
+        for child in self.children:
+            child.delete()
+        for restore_object in self.restore_objects:
+            restore_object[0].delete()
+
     def set_alpha(self, value:int, this_surface:pygame.Surface|None=None) -> None:
         '''Sets the alpha of an object and its children. If an object does not have a surface attribute, use this_surface.'''
         if this_surface is not None:

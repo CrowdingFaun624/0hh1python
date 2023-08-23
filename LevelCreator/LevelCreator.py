@@ -13,8 +13,8 @@ except ImportError:
     import LevelSolver
     import LevelValidator
 
-def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, hard_mode:bool=False) -> tuple[list[int],list[int],dict[str,any]]:
-    '''Returns the solution, the incomplete puzzle, and other data.'''
+def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, hard_mode:bool=False, gen_info:LU.GenerationInfo|None=None) -> tuple[list[int],list[int],dict[str,any]]|None:
+    '''Returns the solution, the incomplete puzzle, and other data. Will return None if the first item of `break_holder` is True.'''
 
     if seed is None: seed = random.randint(-2147483648, 2147483647)
     after_seed = random.randint(-2147483648, 2147483647) # seed to start using after this is done to restore the randomness.
@@ -24,17 +24,19 @@ def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, hard_mode:boo
     elif size[1] % colors != 0: raise ValueError("Invalid height for %s colors!" % colors)
     if size[0] > size[1]: solution_generator_size = (size[1], size[0]); is_rotated = True
     else: solution_generator_size = size; is_rotated = False
-    full_grid = LevelGenerator.generate_solution(solution_generator_size, seed, colors)
+    full_grid = LevelGenerator.generate_solution(solution_generator_size, seed, colors, gen_info=gen_info)
+    if full_grid is None: return None
     if is_rotated: full_grid = LU.rotate_board(full_grid, solution_generator_size)
 
-    empty_grid = breakdown(full_grid, size, seed, colors, hard_mode)
+    empty_grid = breakdown(full_grid, size, seed, colors, hard_mode, gen_info=gen_info)
+    if empty_grid is None: return None
     quality = round(LU.count_empty_tiles(empty_grid) / (size[0] * size[1]) * 100) # how many empty tiles there are
     other_data = {"seed": seed, "quality": quality}
     random.seed(after_seed)
     return full_grid, empty_grid, other_data
 
 
-def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, hard_mode:bool=False) -> list[int]:
+def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, hard_mode:bool=False, gen_info:LU.GenerationInfo|None=None) -> list[int]:
     '''Removes tiles from the board so it's an actual puzzle.
     basically how this works is that it picks a random tile from the board,
     and then picks an empty tile. That empty tile is picked in order of in
@@ -42,7 +44,6 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, hard
     the value of the empty tile using data available (hence why it
     prioritizes tiles in rows and columns), and then sets the non-empty
     tile to be empty if it was able to find it.'''
-    original_tiles = [[tile] for tile in tiles]
     tiles = [[tile] for tile in tiles]
 
     if seed is None: seed = random.randint(-2147483648, 2147483647)
@@ -63,7 +64,7 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, hard
     tiles_cache:list[int] = [list(range(1, colors + 1))] * (size[0] * size[1])
     DEFAULT = list(range(1, colors + 1))
     # debug_string = ""
-    for tile_index in random_range:
+    for index, tile_index in enumerate(random_range):
         # print(tile_index)
         tile_value = tiles[tile_index]
         tiles[tile_index] = DEFAULT[:]
@@ -79,6 +80,9 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, hard
 
         if was_successful: tiles[tile_index] = DEFAULT[:]; since_last_success = 0
         else: tiles[tile_index] = tile_value; since_last_success += 1 # resets the tile's value in case it cannot be extrapolated from current board
+        if gen_info is not None:
+            if gen_info.breaker: return None
+            gen_info.generation_progress = 0.9 + (index / (len(random_range))) * 0.1
         # LevelPrinter.print_board(tiles, size)
     # print(debug_string)
     random.seed(after_seed)
