@@ -72,6 +72,10 @@ class Board(Drawable.Drawable):
         self.should_destroy = True
         self.generation_info.breaker = True
 
+    def delete(self) -> None:
+        self.kill_generator()
+        super().delete()
+
     def get_board_from_seed(self) -> list[int]:
         self.full_board, self.empty_board, self.other_data, self.tiles = None, None, None, None
         # return
@@ -91,7 +95,7 @@ class Board(Drawable.Drawable):
         self.children.extend(self.get_additional_children())
     
     def get_additional_children(self) -> list[Drawable.Drawable]:
-        return [ButtonPanel.ButtonPanel([("close", (self.button_close,)), ("history", (self.button_undo,)), ("eye", (self.button_hint,))], self.position[1] + self.pixel_size, self.window_size[1], self.position[0], self.position[0] + self.pixel_size)]
+        return [ButtonPanel.ButtonPanel([("close", (self.button_close,)), ("history", (self.button_undo,)), ("eye", (self.button_hint,))])]
 
     def get_lock_surface(self) -> pygame.Surface:
         '''Returns a copy of the lock texture, sized and opacitized correctly.'''

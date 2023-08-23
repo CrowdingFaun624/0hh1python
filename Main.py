@@ -75,3 +75,15 @@ for object in objects:
     object.delete()
 
 pygame.quit()
+
+# TODO: make button panel nicer.
+# TODO: timer
+# TODO: row/column counters
+# TODO: row/column checkboxes
+# TODO: local leaderboard and score
+# TODO: medium mode
+# TODO: accessibility
+# TODO: tutorial
+# TODO: release?
+# TODO: global leaderboard
+# TODO: resource packs

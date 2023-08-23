@@ -2,6 +2,7 @@ import pygame
 
 import UI.Board as Board
 import UI.Button as Button
+import UI.ButtonPanel as ButtonPanel
 import UI.Drawable as Drawable
 import UI.Intro as Intro
 import UI.LevelSelector as LevelSelector
@@ -11,6 +12,7 @@ import UI.SettingsMenu as SettingsMenu
 reload_carrier = None # set to `[False]` by Main.py
 
 def get_main_object() -> Drawable.Drawable:
+    ButtonPanel.ButtonPanel.set_position(pygame.display.get_window_size())
     return Intro.Intro(pygame.display.get_window_size(), exit_intro)
 
 def exit_intro(intro:Intro.Intro) -> list[tuple[Drawable.Drawable,int]]:

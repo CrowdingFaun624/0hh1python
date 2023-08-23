@@ -94,10 +94,6 @@ class LoadingScreen(Drawable.Drawable):
         self.board.kill_generator()
         self.restore_objects.extend(self.board.restore_objects)
 
-    def delete(self) -> None:
-        self.board.kill_generator()
-        super().delete()
-
     def calculate_sizes(self) -> None:
         # loading_tile_size = LOADING_TILE_SIZE * min(self.board_size)
         # self.loading_tile = Tile.Tile(0, loading_tile_size, self.board.colors, False, 2, self.opacity.get(), mode="loading")
@@ -117,7 +113,7 @@ class LoadingScreen(Drawable.Drawable):
         progress_text_position = (self.position[0] + (self.board_size[0] - progress_text_size[0]) / 2, self.position[1] + (self.board_size[1] * 1.0 - progress_text_size[1]) / 2 - loading_bar_size[1] * 1.5)
         self.progress_text = Drawable.Drawable(progress_text, progress_text_position)
 
-        self.button_panel = ButtonPanel.ButtonPanel([("close", (self.button_close,))], self.position[1] + self.board_size[1], self.display_size[1], self.position[0], self.position[0] + self.board_size[0])
+        self.button_panel = ButtonPanel.ButtonPanel([("close", (self.button_close,))])
 
     def display(self) -> pygame.Surface|None:
         # self.loading_tile.surface = self.loading_tile.reload_for_loading(self.loading_start_time - time.time())

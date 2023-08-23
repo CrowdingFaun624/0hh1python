@@ -11,17 +11,29 @@ class ButtonPanel(Drawable.Drawable):
     def scale_texture(self, surface:pygame.Surface, vertical_space:float) -> pygame.Surface:
         multiplier = round(((vertical_space / 130) * 16) / 16)
         return pygame.transform.scale_by(surface, multiplier)
-    def __init__(self, button_parameters:list[tuple[str|tuple[pygame.Surface,tuple[Callable[[],pygame.Surface]],list,dict],tuple[Callable[[],None|list[tuple[Drawable.Drawable,int]]],list[any],dict[any]]]], top_constraint:int, bottom_constraint:int, left_constraint:int, right_constraint:int) -> None:
-        if top_constraint > bottom_constraint: raise ValueError("Top constraint (%s) is greater than bottom restraint (%s)!" % (str(top_constraint), str(bottom_constraint)))
-        if left_constraint > right_constraint: raise ValueError("Left constraint (%s) is greater than right constraint (%s)!" % (str(left_constraint), str(right_constraint)))
-        vertical_space = bottom_constraint - top_constraint
-        self.top_constraint = top_constraint; self.bottom_constraint = bottom_constraint; self.right_constraint = right_constraint; self.left_constraint = left_constraint
+    def __init__(self, button_parameters:list[tuple[str|tuple[pygame.Surface,tuple[Callable[[],pygame.Surface]],list,dict],tuple[Callable[[],None|list[tuple[Drawable.Drawable,int]]],list[any],dict[any]]]]) -> None:
+        vertical_space = self.bottom_constraint - self.top_constraint
         self.button_texture_parameters = [button[0] for button in button_parameters]
         buttons = [Button.Button(self.scale_texture(Textures.get(button[0]) if isinstance(button[0], str) else button[0][0], vertical_space), (0, 0), None, left_click_action=button[1]) for button in button_parameters]
         self.children = buttons
         self.calculate_positions()
         super().__init__(None, (0, 0), children=buttons)
     
+    position:tuple[int,int]=(0, 0)
+    top_constraint = 0
+    bottom_constraint = 0
+    left_constraint = 0
+    right_constraint = 0
+
+    def set_position(display_size:tuple[int,int]) -> None:
+        '''Called at startup; sets values to consistent values.'''
+        width = display_size[0] * 0.75
+        ButtonPanel.top_constraint = display_size[1] * 0.9
+        ButtonPanel.bottom_constraint = display_size[1]
+        ButtonPanel.position = ((display_size[0] - width) / 2, ButtonPanel.top_constraint)
+        ButtonPanel.left_constraint = ButtonPanel.position[0]
+        ButtonPanel.right_constraint = ButtonPanel.position[0] + width
+
     def disable(self) -> None:
         for button in self.children:
             button.enabled = False

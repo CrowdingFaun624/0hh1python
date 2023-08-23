@@ -32,7 +32,7 @@ class LevelSelector(Drawable.Drawable):
         self.opacity = Animation.Animation(1.0, 0.0, FADE_TIME, Bezier.ease_in)
         self.surface = self.get_surface()
         if children is None: children = []
-        button_panel = ButtonPanel.ButtonPanel([("cog", (self.settings_function,[self]))], self.position[1] + self.surface.get_size()[1], self.display_size[1], self.position[0], self.position[0] + self.surface.get_size()[0])
+        button_panel = ButtonPanel.ButtonPanel([("cog", (self.settings_function,[self]))])
         super().__init__(self.surface, self.position, restore_objects, children + [button_panel])
 
     def calculate_sizes(self) -> None:

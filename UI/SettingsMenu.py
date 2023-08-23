@@ -39,7 +39,7 @@ class SettingsMenu(Drawable.Drawable):
     def __get_additional_children(self) -> list[Drawable.Drawable]:
         return [
             self.get_title(),
-            ButtonPanel.ButtonPanel([("close", (self.button_close,))], self.position[1] + 0.9 * self.display_size[1], self.window_size[1], self.position[0], self.position[0] + self.display_size[0]),
+            ButtonPanel.ButtonPanel([("close", (self.button_close,))]),
             ]
 
     def change_text(self, title:Drawable.Drawable, new_text:str, font_parameters:tuple[int,int,int,pygame.Color]) -> None:
