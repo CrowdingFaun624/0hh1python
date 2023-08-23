@@ -27,4 +27,4 @@ def get(name:str) -> pygame.Surface:
     file_name = TEXTURES[name]
     if isinstance(file_name, list):
         file_name = file_name[Settings.settings["light_mode"]]
-    return textures[file_name]
+    return textures[file_name].copy()

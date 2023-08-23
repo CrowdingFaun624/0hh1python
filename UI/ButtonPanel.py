@@ -11,9 +11,9 @@ class ButtonPanel(Drawable.Drawable):
     def scale_texture(self, surface:pygame.Surface, vertical_space:float) -> pygame.Surface:
         multiplier = round(((vertical_space / 130) * 16) / 16)
         return pygame.transform.scale_by(surface, multiplier)
-    def __init__(self, button_parameters:list[tuple[str|tuple[pygame.Surface,tuple[Callable[[],pygame.Surface]],list,dict],tuple[Callable[[],None|list[tuple[Drawable.Drawable,int]]]]]], top_constraint:int, bottom_constraint:int, left_constraint:int, right_constraint:int) -> None:
-        if top_constraint > bottom_constraint: raise ValueError("Top constraint is greater than bottom restraint!")
-        if left_constraint > right_constraint: raise ValueError("Left constraint is greater than right constraint!")
+    def __init__(self, button_parameters:list[tuple[str|tuple[pygame.Surface,tuple[Callable[[],pygame.Surface]],list,dict],tuple[Callable[[],None|list[tuple[Drawable.Drawable,int]]],list[any],dict[any]]]], top_constraint:int, bottom_constraint:int, left_constraint:int, right_constraint:int) -> None:
+        if top_constraint > bottom_constraint: raise ValueError("Top constraint (%s) is greater than bottom restraint (%s)!" % (str(top_constraint), str(bottom_constraint)))
+        if left_constraint > right_constraint: raise ValueError("Left constraint (%s) is greater than right constraint (%s)!" % (str(left_constraint), str(right_constraint)))
         vertical_space = bottom_constraint - top_constraint
         self.top_constraint = top_constraint; self.bottom_constraint = bottom_constraint; self.right_constraint = right_constraint; self.left_constraint = left_constraint
         self.button_texture_parameters = [button[0] for button in button_parameters]
