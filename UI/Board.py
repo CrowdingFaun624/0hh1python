@@ -234,9 +234,11 @@ class Board(Drawable.Drawable):
             case 1: # during rewind; it makes it rewind one unit further.
                 if self.rewind_point >= 0:
                     self.rewind_point -= 1
+                target_tile_index = self.history[self.rewind_point][0]
                 for place_index, place in enumerate(self.tile_place_order):
-                    if place[1] == self.rewind_point:
+                    if place[0] == target_tile_index:
                         self.rewind_place_point = place_index
+                        break
                 self.rewind_final_tile = self.history[self.rewind_point][0]
                 return
             case 2: # end of rewind; undoing undoes from the display position.
