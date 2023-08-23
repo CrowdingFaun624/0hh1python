@@ -20,6 +20,7 @@ class Tile(Drawable.Drawable):
         self.is_locked = is_locked
 
         self.click_time = 0.0
+        self.click_time_locked = 0.0
         if colors == 2:
             current_color = self.get_color(value, is_even)
         else:
@@ -244,9 +245,8 @@ class Tile(Drawable.Drawable):
 
     def __get_rotation(self, current_time:float, time:float) -> None:
         self.rotation = 0
-        if self.click_type == "locked":
-            if current_time - self.click_time <= time:
-                self.rotation = math.radians(Animation.animate(Animation.wiggle, time, Bezier.ease, current_time - self.click_time)) # ANIMATION
+        if current_time - self.click_time_locked <= time:
+            self.rotation = math.radians(Animation.animate(Animation.wiggle, time, Bezier.ease, current_time - self.click_time_locked)) # ANIMATION
         self.sin_rotation = math.sin(self.rotation)
         self.cos_rotation = math.cos(self.rotation)
     def __get_rotation_loading(self, elapsed_time:float) -> None:

@@ -52,7 +52,7 @@ class Board(Drawable.Drawable):
         self.is_hinting = False
         self.history:list[tuple[int,int|list[int],int|list[int]]] = []
         # self.history is (index, value_set_to, previous_value)
-        self.tile_place_order:list[tuple[int]] = [] # list of indexes; if appended value is already contained then value already contained is removed then appended.
+        self.tile_place_order:list[tuple[int,int]] = [] # list of indexes, corresponding history index; if appended value is already contained then value already contained is removed then appended.
         self.player_board_is_full = False
         self.player_board_fill_time = None
         self.marked_as_complete = False
@@ -70,13 +70,15 @@ class Board(Drawable.Drawable):
     def kill_generator(self) -> None:
         '''Stops the generator from generating and closes the board.'''
         self.should_destroy = True
-        self.generation_breaker[0] = True
+        self.generation_info.breaker = True
 
     def get_board_from_seed(self) -> list[int]:
         self.full_board, self.empty_board, self.other_data, self.tiles = None, None, None, None
         # return
-        self.generation_breaker = [False]
-        self.full_board, self.empty_board, self.other_data = LevelCreator.generate(self.size, self.seed, self.colors, Settings.settings["hard_mode"], break_holder=self.generation_breaker)
+        self.generation_info = LU.GenerationInfo()
+        generator_return = LevelCreator.generate(self.size, self.seed, self.colors, Settings.settings["hard_mode"], gen_info=self.generation_info)
+        if generator_return is None: return
+        self.full_board, self.empty_board, self.other_data = generator_return
         if self.colors == 2:
             self.display_board = self.empty_board[:]
         else:
@@ -173,11 +175,11 @@ class Board(Drawable.Drawable):
         self.can_modify = False
         self.decouple()
         self.rewind_state = 1
-        self.rewind_point = history_point - 1
+        self.rewind_point = history_point # where it's rewinding to
         self.rewind_place_point = place_point
         self.since_last_rewind = 0 # use 0 instead of current time so it instantly rewinds the first tile
         self.current_rewind_point = len(self.history) - 1
-        self.rewind_speed = min(REWIND_SPEED_MAX, 1.0/(self.current_rewind_point - self.rewind_point))
+        self.rewind_speed = min(REWIND_SPEED_MAX, 1.0/(1 + self.current_rewind_point - self.rewind_point))
         self.rewind_final_tile = self.history[history_point][0]
 
     def highlight(self, tiles_indexes:list[int]) -> None:
@@ -216,6 +218,7 @@ class Board(Drawable.Drawable):
             self.rewind(first_error_history_index, first_error_place_index)
 
     def button_close(self) -> None:
+        self.recouple_player()
         self.opacity.set(0.0, BOARD_FADE_OUT_TIME_CLOSE)
         for child in self.children:
             if isinstance(child, Button.Button):
@@ -228,11 +231,18 @@ class Board(Drawable.Drawable):
     def button_undo(self) -> None:
         match self.rewind_state:
             case 0: pass
-            case 1: # end of rewind
-                self.unhighlight()
-                self.recouple_player()
+            case 1: # during rewind; it makes it rewind one unit further.
+                if self.rewind_point >= 0:
+                    self.rewind_point -= 1
+                for place_index, place in enumerate(self.tile_place_order):
+                    if place[1] == self.rewind_point:
+                        self.rewind_place_point = place_index
+                self.rewind_final_tile = self.history[self.rewind_point][0]
                 return
-            case 2: self.recouple_display() # NOTE: this means that when fully rewinded, undoing undoes from the display position.
+            case 2: # end of rewind; undoing undoes from the display position.
+                self.recouple_display()
+                self.unhighlight()
+                pass
         if len(self.history) == 0: return
         self.unhighlight()
         index, post, pre = self.history.pop()
@@ -326,14 +336,14 @@ class Board(Drawable.Drawable):
             if event.__dict__["button"] not in up_values: return
             index = get_index()
             if index is None: return
-            self.tiles[index].click_time = time.time()
             if not self.tiles[index].can_modify: # if it is a locked tile
-                self.tiles[index].click_type = CLICK_ACTION_LOCKED
+                self.tiles[index].click_time_locked = time.time()
                 if not self.is_complete and self.tiles[index].is_locked:
                     self.show_locks = not self.show_locks
                     self.update_locks()
                 return
-            else: self.tiles[index].click_type = CLICK_ACTION_SUCCESS
+            else:
+                self.tiles[index].click_time = time.time()
             if self.rewind_state == 2: self.recouple_display()
             if self.colors == 2:
                 current_value = self.player_board[index]
@@ -409,7 +419,7 @@ class Board(Drawable.Drawable):
                 self.set_tile(tile_index, previous_value)
                 if self.colors == 2: self.display_board[tile_index] = previous_value
                 self.current_rewind_point -= 1
-        if self.rewind_state == 1 and self.current_rewind_point == self.rewind_point:
+        if self.rewind_state == 1 and self.current_rewind_point == self.rewind_point - 1:
             # finish rewinding
             self.rewind_state = 2
             self.can_modify = True
