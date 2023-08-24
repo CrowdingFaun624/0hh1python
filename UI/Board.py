@@ -10,7 +10,9 @@ import LevelCreator.LevelHinter as LevelHinter
 import LevelCreator.LevelUtilities as LU
 import UI.Button as Button
 import UI.ButtonPanel as ButtonPanel
+import UI.Colors as Colors
 import UI.Drawable as Drawable
+import UI.Fonts as Fonts
 import UI.Textures as Textures
 import UI.Tile as Tile
 import Utilities.Animation as Animation
@@ -44,7 +46,7 @@ class Board(Drawable.Drawable):
 
         self.__current_mouse_over:int = None
         self.show_locks = False # TODO: make this carry over between board instances.
-        self.is_complete = False # used for locking all of the tiles
+        self.is_complete = False # True only when the board locks after correctly completing it.
         self.opacity = Animation.Animation(0.0, 0.0, BOARD_FADE_IN_TIME, Bezier.ease_in)
         self.is_finished_loading = False
         self.window_size = window_size
@@ -93,9 +95,15 @@ class Board(Drawable.Drawable):
         
         self.is_finished_loading = True
         self.children.extend(self.get_additional_children())
+        self.start_time = time.time()
     
     def get_additional_children(self) -> list[Drawable.Drawable]:
-        return [ButtonPanel.ButtonPanel([("close", (self.button_close,)), ("history", (self.button_undo,)), ("eye", (self.button_hint,))])]
+        children:list[Drawable.Drawable] = []
+        children.append(ButtonPanel.ButtonPanel([("close", (self.button_close,)), ("history", (self.button_undo,)), ("eye", (self.button_hint,))]))
+        self.timer_text = Drawable.Drawable(None, (0, 0))
+        self.timer_text_content = ""
+        children.append(self.timer_text)
+        return children
 
     def get_lock_surface(self) -> pygame.Surface:
         '''Returns a copy of the lock texture, sized and opacitized correctly.'''
@@ -129,7 +137,27 @@ class Board(Drawable.Drawable):
             self.tiles.append(tile)
         self.children.extend(self.tiles)
 
+    def get_timer_text(self) -> None:
+        '''Sets the timer text's values.'''
+        if self.is_complete:
+            elapsed_time = self.final_time
+            timer_text = "%s:%s%s" % (str(int(elapsed_time // 60)).zfill(2), str(int(elapsed_time % 60)).zfill(2), ("%.3f" % round(elapsed_time % 1, 3))[1:])
+        else:
+            elapsed_time = time.time() - self.start_time
+            timer_text = "%s:%s" % (str(int(elapsed_time // 60)).zfill(2), str(int(elapsed_time % 60)).zfill(2))
+        if timer_text != self.timer_text_content:
+            self.timer_text_content = timer_text
+            surface = Fonts.board_timer.render(timer_text, True, Colors.get("font"))
+            self.timer_text.surface = surface
+            bottom_constraint = ButtonPanel.ButtonPanel.top_constraint
+            top_constraint = self.position[1] + self.pixel_size
+            vertical_space = bottom_constraint - top_constraint
+            assert vertical_space > 0
+            surface_size = surface.get_size()
+            self.timer_text.position = (self.position[0] + (self.pixel_size - surface_size[0]) / 2, top_constraint + (vertical_space - surface_size[1]) / 2)
+
     def display(self) -> pygame.Surface:
+        self.get_timer_text()
         current_time = time.time()
         opacity = self.opacity.get(current_time)
         if self.is_finished_loading:
@@ -209,6 +237,8 @@ class Board(Drawable.Drawable):
         expanded_player_board = LU.expand_board(self.colors, self.player_board) if isinstance(self.player_board[0], int) else self.player_board
         expanded_full_board = LU.expand_board(self.colors, self.full_board) if isinstance(self.full_board[0], int) else self.full_board
         if LU.boards_match(expanded_player_board, expanded_full_board):
+            self.is_complete = True
+            self.final_time = self.player_board_fill_time - self.start_time
             self.opacity.set(0.0, BOARD_FADE_OUT_TIME_COMPLETE)
             for child in self.children:
                 if isinstance(child, Button.Button):
@@ -344,7 +374,7 @@ class Board(Drawable.Drawable):
             if index is None: return
             if not self.tiles[index].can_modify: # if it is a locked tile
                 self.tiles[index].click_time_locked = time.time()
-                if not self.is_complete and self.tiles[index].is_locked:
+                if self.tiles[index].is_locked:
                     self.show_locks = not self.show_locks
                     self.update_locks()
                 return

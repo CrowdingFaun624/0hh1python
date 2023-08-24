@@ -64,6 +64,7 @@ while running:
     extend_objects(objects, new_objects)
     if UIManager.reload_carrier[0]:
         UIManager.reload_carrier[0] = False
+        UIManager.ButtonPanel.ButtonPanel.set_position(pygame.display.get_window_size())
         for object in objects:
             object.reload(time.time())
 
@@ -76,13 +77,12 @@ for object in objects:
 
 pygame.quit()
 
-# TODO: make button panel nicer.
-# TODO: timer
 # TODO: row/column counters
 # TODO: row/column checkboxes
 # TODO: local leaderboard and score
 # TODO: medium mode
 # TODO: accessibility
+# TODO: different languages
 # TODO: tutorial
 # TODO: release?
 # TODO: global leaderboard

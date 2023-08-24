@@ -10,6 +10,7 @@ fonts:dict[str,str] = {"josefin": JOSEFINE_FILE, "molle": MOLLE_FILE}
 josefin = pygame.font.Font(JOSEFINE_FILE, 95)
 molle = pygame.font.Font(MOLLE_FILE, 95)
 
+board_timer = pygame.font.Font(JOSEFINE_FILE, 20)
 loading_screen = pygame.font.Font(MOLLE_FILE, 115)
 loading_screen_progress = pygame.font.Font(JOSEFINE_FILE, 15)
 
