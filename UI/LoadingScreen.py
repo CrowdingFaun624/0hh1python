@@ -27,6 +27,7 @@ class LoadingBar(Drawable.Drawable):
         self.parent = parent
         self.color_name = color_name # color to fill the complete portion with.
         self.progress = 0.0
+        self.opacity = 0.0
         super().__init__(self.get_surface(), position, restore_objects, children)
     
     def get_progress(self) -> float:
@@ -57,6 +58,7 @@ class LoadingBar(Drawable.Drawable):
         surface.blit(mask, (0, 0))
         surface.set_colorkey(mask_color1)
         pygame.draw.rect(surface, border_color, pygame.Rect(0, LOADING_BAR_HEIGHT / 2 - r, self.width, r * 2), border_radius=r, width=LOADING_BAR_BORDER_WIDTH)
+        surface.set_alpha(255 * self.opacity)
         return surface
     
     def display(self) -> pygame.Surface:
@@ -66,6 +68,10 @@ class LoadingBar(Drawable.Drawable):
     def reload(self, current_time:float) -> None:
         self.surface = self.get_surface()
         return super().reload(current_time)
+    
+    def set_alpha(self, value:int, this_surface:pygame.Surface|None=None) -> None:
+        self.opacity = value
+        return super().set_alpha(value, this_surface)
 
 class LoadingScreen(Drawable.Drawable):
     def __init__(self, board:Board.Board, board_size:tuple[float,float], display_size:tuple[float,float], exit_function:Callable[[],list[tuple[Drawable.Drawable,int]]], surface:pygame.Surface|None=None, position:tuple[int,int]|None=None, restore_objects:list[tuple[Drawable.Drawable,int]]|None=None, children:list[Drawable.Drawable]|None=None) -> None:
