@@ -27,7 +27,7 @@ class LoadingBar(Drawable.Drawable):
         self.parent = parent
         self.color_name = color_name # color to fill the complete portion with.
         self.progress = 0.0
-        self.opacity = 0.0
+        self.opacity = 0
         super().__init__(self.get_surface(), position, restore_objects, children)
     
     def get_progress(self) -> float:
@@ -58,7 +58,7 @@ class LoadingBar(Drawable.Drawable):
         surface.blit(mask, (0, 0))
         surface.set_colorkey(mask_color1)
         pygame.draw.rect(surface, border_color, pygame.Rect(0, LOADING_BAR_HEIGHT / 2 - r, self.width, r * 2), border_radius=r, width=LOADING_BAR_BORDER_WIDTH)
-        surface.set_alpha(255 * self.opacity)
+        surface.set_alpha(self.opacity)
         return surface
     
     def display(self) -> pygame.Surface:
