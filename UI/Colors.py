@@ -9,12 +9,13 @@ COLORS = { # lists of colors are [dark mode, light mode]
     "font.loading_screen_progress": pygame.Color(128, 128, 128),
 
     "loading_bar.border": [pygame.Color(255, 255, 255), pygame.Color(0, 0, 0)],
-    "loading_bar.incomplete": pygame.Color(16, 16, 16), # complete color is the tile color.
+    "loading_bar.incomplete": [pygame.Color(16, 16, 16), pygame.Color(64, 64, 64)], # complete color is the tile color.
 
     "switch_button.inner_off": pygame.Color(16, 16, 16),
     "switch_button.inner_on": pygame.Color(216, 216, 216),
     "switch_button.outer": [pygame.Color(240, 240, 240), pygame.Color(20, 20, 20)],
     "switch_button.border": [pygame.Color(255, 255, 255), pygame.Color(0, 0, 0)],
+    "switch_button.switch": pygame.Color(128, 128, 128),
 
     "tile.0": [pygame.Color(42, 42, 42), pygame.Color(213, 213, 213)],
     "tile.1_even": pygame.Color(213, 83, 54),
