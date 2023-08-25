@@ -9,7 +9,7 @@ import UI.Textures as Textures
 class ButtonPanel(Drawable.Drawable):
     '''Creates a horizontal row of buttons. Give it a list of button parameters. Arguments: string (texture name) or (surface and function to recreate that surface); (click function, positional arguments, keyword arguments)'''
     def scale_texture(self, surface:pygame.Surface, vertical_space:float) -> pygame.Surface:
-        multiplier = round(((vertical_space / 130) * 16) / 16)
+        multiplier = round(((vertical_space / 90) * 16)) / 16
         return pygame.transform.scale_by(surface, multiplier)
     def __init__(self, button_parameters:list[tuple[str|tuple[pygame.Surface,tuple[Callable[[],pygame.Surface]],list,dict],tuple[Callable[[],None|list[tuple[Drawable.Drawable,int]]],list[any],dict[any]]]]) -> None:
         vertical_space = self.bottom_constraint - self.top_constraint
