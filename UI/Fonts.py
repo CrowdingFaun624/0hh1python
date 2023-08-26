@@ -25,7 +25,8 @@ def get_font(font_name:str, size:int) -> pygame.font.Font:
     other_fonts[(font_name, size)] = font
     return font
 
-def get_fitted_font(text:str, font_name:str, max_size:int, max_width:int, max_height:int) -> pygame.font.Font:
+def get_fitted_font_size(text:str, font_name:str, max_size:int, max_width:int, max_height:int) -> float:
+    '''Returns the size of a font that will fit in the size provided.'''
     start_font = get_font(font_name, max_size)
     start_font_size = start_font.size(text)
     new_size = max_size
@@ -35,5 +36,12 @@ def get_fitted_font(text:str, font_name:str, max_size:int, max_width:int, max_he
     if start_font_size[1] > max_height:
         ratio = max_height / start_font_size[1]
         new_size = min(max_size * ratio, new_size)
-    if new_size == max_size: return start_font
-    else: return get_font(font_name, new_size)
+    return new_size
+
+def get_fitted_font(text:str, font_name:str, max_size:int, max_width:int, max_height:int) -> pygame.font.Font:
+    '''Returns a Font that will fit in the size provided.'''
+    return get_font(font_name, get_fitted_font_size(text, font_name, max_size, max_width, max_height))
+
+def get_fitted_font_multi(texts:list[str], font_name:str, max_size:int, max_width:int, max_height:int) -> pygame.font.Font:
+    '''Gets the smallest font size that will fit in the size provided.'''
+    return get_font(font_name, min(get_fitted_font_size(text, font_name, max_size, max_width, max_height) for text in texts))

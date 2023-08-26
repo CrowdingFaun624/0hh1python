@@ -7,6 +7,9 @@ COLORS = { # lists of colors are [dark mode, light mode]
     "font": [pygame.Color(255, 255, 255), pygame.Color(0, 0, 0)],
     "font.tile": pygame.Color(255, 255, 255),
     "font.loading_screen_progress": pygame.Color(128, 128, 128),
+    "font.axis_counter.normal": [pygame.Color(255, 255, 255), pygame.Color(0, 0, 0)],
+    "font.axis_counter.bad": pygame.Color(210, 16, 16),
+    "font.axis_counter.complete": pygame.Color(40, 210, 16),
 
     "loading_bar.border": [pygame.Color(255, 255, 255), pygame.Color(0, 0, 0)],
     "loading_bar.incomplete": [pygame.Color(16, 16, 16), pygame.Color(64, 64, 64)], # complete color is the tile color.

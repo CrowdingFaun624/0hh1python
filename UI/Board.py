@@ -8,6 +8,7 @@ import pygame
 import LevelCreator.LevelCreator as LevelCreator
 import LevelCreator.LevelHinter as LevelHinter
 import LevelCreator.LevelUtilities as LU
+import UI.AxisCounter as AxisCounter
 import UI.Button as Button
 import UI.ButtonPanel as ButtonPanel
 import UI.Colors as Colors
@@ -32,11 +33,19 @@ class Board(Drawable.Drawable):
     def __init__(self, size:int|tuple[int,int], seed:int=None, colors:int=2, position:tuple[int,int]=(0,0), pixel_size:int=640, restore_objects:list[tuple[Drawable.Drawable,int]]|None=None, children:list[Drawable.Drawable]|None=None, window_size:tuple[int,int]=None) -> None:
         if isinstance(size, int): size = (size, size)
         super().__init__()
+
+        self.hard_mode:bool = Settings.settings["hard_mode"]
+        self.has_axis_counters:bool = Settings.settings["axis_counters"]
+        self.count_remaining:bool = Settings.settings["count_remaining"]
+        self.counters_left = Settings.settings["counters_left"]
+        self.counters_top = Settings.settings["counters_top"]
+
         self.position = position
         self.should_destroy = False
         self.restore_objects = [] if restore_objects is None else restore_objects
         self.children = [] if children is None else children
         largest_size = max(size)
+        if self.has_axis_counters: largest_size += 1
         self.pixel_size = pixel_size
         self.display_size = pixel_size / largest_size
         if seed is None: self.seed = random.randint(-2147483648, 2147483647)
@@ -65,6 +74,7 @@ class Board(Drawable.Drawable):
         self.current_rewind_point = None # history index the rewind is currently at; starts at len(self.history) - 1\
         self.rewind_final_tile:int|None = None # tile to highlight after finish rewind.
 
+
         # self.loading_screen_init()
         self.generation_thread = threading.Thread(target=self.get_board_from_seed)
         self.generation_thread.start()
@@ -82,7 +92,7 @@ class Board(Drawable.Drawable):
         self.full_board, self.empty_board, self.other_data, self.tiles = None, None, None, None
         # return
         self.generation_info = LU.GenerationInfo()
-        generator_return = LevelCreator.generate(self.size, self.seed, self.colors, Settings.settings["hard_mode"], gen_info=self.generation_info)
+        generator_return = LevelCreator.generate(self.size, self.seed, self.colors, self.hard_mode, gen_info=self.generation_info)
         if generator_return is None: return
         self.full_board, self.empty_board, self.other_data = generator_return
         if self.colors == 2:
@@ -93,9 +103,9 @@ class Board(Drawable.Drawable):
         self.player_board = self.display_board
         self.init_tiles()
         
-        self.is_finished_loading = True
         self.children.extend(self.get_additional_children())
         self.start_time = time.time()
+        self.is_finished_loading = True
     
     def get_additional_children(self) -> list[Drawable.Drawable]:
         children:list[Drawable.Drawable] = []
@@ -115,27 +125,66 @@ class Board(Drawable.Drawable):
 
     def init_tiles(self) -> None:
         self.tiles:list[Tile.Tile] = []
+        self.axis_counters:list[AxisCounter.AxisCounter] = []
         current_time = time.time()
         lock_surface = self.get_lock_surface()
-        for index in range(self.size[0] * self.size[1]):
-            x = index % self.size[0]
-            y = index // self.size[0]
-            is_even = (x + y) % 2 == 1
-            if self.tile_is_empty(self.empty_board[index]):
-                start_progress = 0.0
-                can_modify = True
-                is_locked = False
+        width = self.size[0]
+        height = self.size[1]
+        if self.has_axis_counters: width += 1; height += 1
+        for index in range(width * height):
+            x = index % width # display position
+            y = index // width
+            is_row_counter = (self.counters_left and x == 0) or (not self.counters_left and x == width - 1)
+            is_column_counter = ((self.counters_top and y == 0) or (not self.counters_top and y == height - 1))
+
+            if self.has_axis_counters and (is_row_counter ^ is_column_counter):
+                # axis counters
+                axis_x = x; axis_y = y
+                if self.counters_left and is_column_counter: axis_x -= 1
+                if self.counters_top and is_row_counter: axis_y -= 1
+                if is_row_counter:
+                    is_top_left = self.counters_left
+                    axis_index = axis_y
+                    length = self.size[0]
+                else:
+                    is_top_left = self.counters_top
+                    axis_index = axis_x
+                    length = self.size[1]
+                axis_counter = AxisCounter.AxisCounter([], axis_index, length, self.colors, is_row_counter, self.display_size, current_time, is_top_left, self.count_remaining)
+                axis_counter.position = (self.position[0] + x * self.display_size, self.position[1] + y * self.display_size)
+                self.axis_counters.append(axis_counter)
+
+            elif self.has_axis_counters and is_row_counter and is_column_counter: pass # the tile in the corner
             else:
-                start_progress = 1.0
-                can_modify = False
-                is_locked = True
-            tile = Tile.Tile(index, self.display_size, self.display_board[index], is_even, self.colors, current_time, start_progress, is_locked, can_modify, self.show_locks, lock_surface, mode="board")
-            x = index % self.size[0]
-            y = index // self.size[0]
-            tile.position = (self.position[0] + x * self.display_size, self.position[1] + y * self.display_size)
-            # tile.set_alpha(255 * self.opacity.get(current_time))
-            self.tiles.append(tile)
+                # tiles
+                tile_x = x; tile_y = y
+                if self.has_axis_counters and self.counters_left: tile_x -= 1
+                if self.has_axis_counters and self.counters_top: tile_y -= 1
+                tile_index = tile_y * self.size[0] + tile_x # actual index
+                is_even = (tile_x + tile_y) % 2 == 1
+                if self.tile_is_empty(self.empty_board[tile_index]):
+                    start_progress = 0.0
+                    can_modify = True
+                    is_locked = False
+                else:
+                    start_progress = 1.0
+                    can_modify = False
+                    is_locked = True
+                tile = Tile.Tile(tile_index, self.display_size, self.display_board[tile_index], is_even, self.colors, current_time, start_progress, is_locked, can_modify, self.show_locks, lock_surface, mode="board")
+                tile.position = (self.position[0] + x * self.display_size, self.position[1] + y * self.display_size)
+                if tile_index == 0: self.tile_origin = tile.position # where the top left corner of the tiles are. 
+                self.tiles.append(tile)
+
+        for axis_counter in self.axis_counters: # pass over axis counters to set the tiles_to_count variable
+            if axis_counter.is_row:
+                axis_counter.tiles_to_count = self.tiles[axis_counter.index * self.size[0] : (axis_counter.index + 1) * self.size[0]]
+                axis_counter.surface = axis_counter.get_surface(current_time)
+            else:
+                axis_counter.tiles_to_count = self.tiles[axis_counter.index::self.size[0]]
+                axis_counter.surface = axis_counter.get_surface(current_time)
+
         self.children.extend(self.tiles)
+        self.children.extend(self.axis_counters)
 
     def get_timer_text(self) -> None:
         '''Sets the timer text's values.'''
@@ -154,7 +203,7 @@ class Board(Drawable.Drawable):
             vertical_space = bottom_constraint - top_constraint
             assert vertical_space > 0
             surface_size = surface.get_size()
-            self.timer_text.position = (self.position[0] + (self.pixel_size - surface_size[0]) / 2, top_constraint + (vertical_space - surface_size[1]) / 2)
+            self.timer_text.position = (self.position[0] + (self.pixel_size - surface_size[0]) / 2, bottom_constraint - surface_size[1])
 
     def display(self) -> pygame.Surface:
         self.get_timer_text()
@@ -354,7 +403,7 @@ class Board(Drawable.Drawable):
     def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> list[tuple[Drawable.Drawable]]|None:
         def get_relative_mouse_position(position:tuple[float,float]|None=None) -> tuple[float,float]:
             if position is None: position = event.__dict__["pos"]
-            return position[0] - screen_position[0], position[1] - screen_position[1]
+            return position[0] - self.tile_origin[0], position[1] - self.tile_origin[1]
         def get_index(position:tuple[float,float]|None=None) -> int|None:
             '''Gets the index of the tile the mouse is over'''
             if not self.is_finished_loading: return None
@@ -432,6 +481,12 @@ class Board(Drawable.Drawable):
                 self.tiles[self.__current_mouse_over].is_mousing_over = False
             self.__current_mouse_over = None
         
+        def key_down() -> None:
+            key = event.__dict__["key"]
+        
+        def key_up() -> None:
+            key = event.__dict__["key"]
+        
         current_time = time.time()
 
         for event in events:
@@ -439,6 +494,8 @@ class Board(Drawable.Drawable):
                 case pygame.MOUSEBUTTONDOWN: mouse_button_down()
                 case pygame.MOUSEMOTION: mouse_motion()
                 case pygame.WINDOWLEAVE: mouse_leave()
+                case pygame.KEYDOWN: key_down()
+                case pygame.KEYUP: key_up()
         
         if self.is_finished_loading and self.opacity.is_finished() and self.opacity.get(current_time) == 0.0:
             self.should_destroy = True

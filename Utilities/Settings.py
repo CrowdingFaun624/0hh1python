@@ -3,7 +3,11 @@ import os
 
 default = { # stores defaults
     "hard_mode": False,
-    "light_mode": False
+    "light_mode": False,
+    "axis_counters": False,
+    "count_remaining": True,
+    "counters_left": False,
+    "counters_top": True,
 }
 
 def create_if_non_existant() -> None:
@@ -38,6 +42,7 @@ def get_settings() -> dict[str,any]:
         return json.loads(f.read())
 
 def write(name:str, value:any) -> None:
+    if name not in settings: raise KeyError("Setting \"%s\" does not exist!" % name)
     settings[name] = value
     with open("./settings.json", "wt") as f:
         f.write(json.dumps(settings, indent=2))

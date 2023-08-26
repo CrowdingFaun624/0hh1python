@@ -18,9 +18,14 @@ TOGGLEABLE=0
 
 class SettingsMenu(Drawable.Drawable):
     def __get_settings(self) -> None:
-        self.settings:list[tuple[str|tuple[str,str],any,int,list[tuple[Callable,list[any],dict[str,any]]]|None,list[tuple[Callable,list[any],dict[str,any]]]|None]] = [ # title|(off title, on title), setting name, setting type, description, off functions, on functions
-            ("Hard mode", "hard_mode", TOGGLEABLE, "", None, None),
-            (("Dark mode", "Light mode"), "light_mode", TOGGLEABLE, "", [(self.reload_everything,)], [(self.reload_everything,)]),
+        self.settings:list[tuple[str|tuple[str,str],any,int,list[tuple[Callable,list[any],dict[str,any]]]|None,list[tuple[Callable,list[any],dict[str,any]]]|None]] = [
+            # title|(off title, on title), setting name, setting type, description, off functions, on functions
+            ("Hard Mode", "hard_mode", TOGGLEABLE, "", None, None),
+            (("Dark Mode", "Light Mode"), "light_mode", TOGGLEABLE, "", [(self.reload_everything,)], [(self.reload_everything,)]),
+            ("Row/Column Counters", "axis_counters", TOGGLEABLE, "Show how many tiles are of each color.", None, None),
+            ("Count Remaining", "count_remaining", TOGGLEABLE, "", None, None),
+            (("Counters on Right", "Counters on Left"), "counters_left", TOGGLEABLE, "", None, None),
+            (("Counters on Bottom", "Counters on Top"), "counters_top", TOGGLEABLE, "", None, None),
         ]
 
     def __init__(self, window_size:tuple[int,int], reload_carrier:list[bool], surface:pygame.Surface|None=None, restore_objects:list[tuple[Drawable.Drawable,int]]|None=None, children:list[Drawable.Drawable]|None=None) -> None:

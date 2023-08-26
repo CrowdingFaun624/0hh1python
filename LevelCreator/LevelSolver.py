@@ -1,7 +1,9 @@
 try:
     import LevelCreator.LevelUtilities as LU
+    import LevelCreator.LevelValidator as LevelValidator
 except ImportError:
     import LevelUtilities as LU
+    import LevelValidator
 
 RETURN_NOW = "RETURN NOW"
 
@@ -509,14 +511,91 @@ if __name__ == "__main__":
     ]
     size = (6, 6)
     colors = 3
+    # tiles = LU.expand_board(2, [ # board from extreme setting on App "Binairio" (chaotic evil)
+    #     0, 0, 0, 2, 0, 2, 0, 0, 0, 0, 2, 0,
+    #     0, 1, 0, 0, 0, 0, 0, 2, 0, 0, 0, 2,
+    #     0, 0, 0, 0, 0, 0, 1, 0, 0, 2, 0, 0,
+    #     0, 2, 2, 0, 2, 0, 0, 0, 1, 0, 0, 1,
+    #     0, 2, 0, 0, 0, 2, 0, 0, 0, 0, 0, 2,
+    #     0, 0, 0, 1, 0, 2, 2, 0, 0, 2, 0, 0,
+    #     2, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 1,
+    #     0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 2,
+    #     0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0,
+    #     1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1,
+    #     0, 0, 0, 0, 2, 0, 2, 1, 0, 0, 0, 0,
+    #     0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0
+    # ])
+    # tiles = LU.expand_board(2, [int(i) for i in # board from hard setting on App "Binairio" (chaotic evil)
+    # '''
+    # 001010010020
+    # 100000001000
+    # 002122001001
+    # 010102000002
+    # 200000002000
+    # 000101201101
+    # 000100000001
+    # 000002020210
+    # 220000000010
+    # 000022022000
+    # 002202000020
+    # 210000020001
+    # '''.replace("\n", "").replace("\t", "").replace(" ", "")])
+    # size = (12, 12)
+    # colors = 2
+    # tiles = LU.expand_board(2, [int(i) for i in # board from average setting on App "Binairio" (chaotic evil)
+    # '''
+    # 000100022000
+    # 000010010000
+    # 010220000120
+    # 210001010200
+    # 001100001000
+    # 010101000002
+    # 002000120210
+    # 000002000002
+    # 000001101000
+    # 002202000200
+    # 122000000002
+    # 000002001002
+    # '''.replace("\n", "").replace("\t", "").replace(" ", "")])
+    # size = (12, 12)
+    # colors = 2
+    # tiles = LU.expand_board(2, [int(i) for i in # board from easy setting on App "Binairio" (chaotic evil)
+    # '''
+    # 010000022002
+    # 000110001000
+    # 000102110020
+    # 000000020011
+    # 020000200000
+    # 200211001001
+    # 000001000201
+    # 101010000100
+    # 002002001020
+    # 210000100000
+    # 220020000110
+    # 020001020010
+    # '''.replace("\n", "").replace("\t", "").replace(" ", "")])
+    # size = (12, 12)
+    # colors = 2
+    # tiles = LU.expand_board(2, [int(i) for i in # this board is chaotic evil.
+    # '''
+    # 021200
+    # 012100
+    # 012100
+    # 221211
+    # 121122
+    # 212211
+    # '''.replace("\n", "").replace("\t", "").replace(" ", "")])
+    # size = (6, 6)
+    # colors = 2
 
-    LU.print_board(tiles, 6)
-    print(tiles)
+    LU.print_board(tiles, size)
+    if not LevelValidator.is_valid(tiles, size, colors):
+        print("The starting board is not valid")
     dependencies = [[] for i in range(size[0] * size[1])]
-    solve(size, colors, tiles, None, dependencies)
-    LU.print_board(tiles, 6)
-    print(tiles)
-    print(dependencies)
+    solve(size, colors, tiles, None, dependencies, hard_mode=False)
+    LU.print_board(tiles, size)
+    if not LevelValidator.is_valid(tiles, size, colors):
+        print("The solved board is not valid")
 
 # TODO: replace sets with lists and see if it's faster.
 
