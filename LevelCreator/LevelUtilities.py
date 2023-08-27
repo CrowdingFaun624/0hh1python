@@ -1,3 +1,5 @@
+import random
+
 def get_row_indexes(size:tuple[int,int], y_position:int) -> list[int]:
     '''Returns a list of indexes in the row.'''
     return list(range(y_position * size[0], (y_position + 1) * size[0]))
@@ -120,8 +122,13 @@ def check_for_duplicates(board:list[list[int]]) -> list[tuple[int,int]]:
             if item1 is item2: output.append((index1, index2, item1, item2))
     return output
 
+def get_seed() -> int:
+    return random.randint(-2147483648, 2147483647)
+
 class GenerationInfo(): # for communication between threads
     def __init__(self) -> None:
         self.breaker = False
         self.generation_progress = 0.0
         self.total_clears = 0
+        self.seed = None
+        self.exception_holder = None

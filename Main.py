@@ -77,8 +77,6 @@ for object in objects:
 
 pygame.quit()
 
-# TODO: show seed in loading screen
-# TODO: show errors in loading screen
 # TODO: row/column checkboxes
 # TODO: local leaderboard and score
 # TODO: medium mode

@@ -1,13 +1,14 @@
-from collections.abc import Callable
 import time
+import traceback
+from collections.abc import Callable
 
 import pygame
 
+import UI.Board as Board
 import UI.ButtonPanel as ButtonPanel
 import UI.Colors as Colors
 import UI.Drawable as Drawable
 import UI.Fonts as Fonts
-import UI.Board as Board
 import UI.Tile as Tile
 import Utilities.Animation as Animation
 import Utilities.Bezier as Bezier
@@ -87,11 +88,12 @@ class LoadingScreen(Drawable.Drawable):
         self.closed_early = False
         self.loading_start_time = time.time()
         self.opacity = Animation.Animation(1.0, 0.0, LOADING_FADE_IN_TIME, Bezier.ease_in)
+        self.is_showing_error = False
 
         self.calculate_sizes()
         if children is None: children = []
         # super().__init__(surface, position, restore_objects, children + [self.loading_tile, self.loading_text, self.button_panel, self.progress_text])
-        super().__init__(surface, position, restore_objects, children + [self.loading_bar, self.progress_text, self.loading_text, self.button_panel])
+        super().__init__(surface, position, restore_objects, children + [self.loading_bar, self.progress_text, self.seed_text, self.loading_text, self.button_panel])
 
     def button_close(self) -> None:
         self.opacity.set(0.0, LOADING_FADE_OUT_TIME)
@@ -119,7 +121,28 @@ class LoadingScreen(Drawable.Drawable):
         progress_text_position = (self.position[0] + (self.board_size[0] - progress_text_size[0]) / 2, self.position[1] + (self.board_size[1] * 1.0 - progress_text_size[1]) / 2 - loading_bar_size[1] * 1.5)
         self.progress_text = Drawable.Drawable(progress_text, progress_text_position)
 
+        seed_text = Fonts.loading_screen_progress.render("%ix%i:%i:%s:%i" % (self.board.size[0], self.board.size[1], self.board.colors, str(self.board.hard_mode), self.board.generation_info.seed), True, Colors.get("font.loading_screen_progress"))
+        seed_text_size = seed_text.get_size()
+        seed_text_position = (self.position[0] + (self.board_size[0] - seed_text_size[0]) / 2, self.position[1] + (self.board_size[1] * 1.0 - seed_text_size[1]) / 2 + loading_bar_size[1] * 1.5)
+        self.seed_text = Drawable.Drawable(seed_text, seed_text_position)
+
         self.button_panel = ButtonPanel.ButtonPanel([("close", (self.button_close,))])
+
+    def show_error(self, exception:BaseException) -> None:
+        self.is_showing_error = True
+        error_strings = ''.join(traceback.TracebackException.from_exception(exception).format()).split("\n")
+        font = Fonts.get_fitted_font_multi(error_strings, "josefin", 15, self.display_size[0], self.display_size[1])
+        error_texts = [font.render(error_string, True, Colors.get("font.loading_screen_progress")) for error_string in error_strings]
+        max_width = max(error_text.get_width() for error_text in error_texts)
+        total_height = sum(error_text.get_height() for error_text in error_texts)
+        error_surface = pygame.Surface((max_width, total_height), pygame.SRCALPHA)
+        y = 0
+        for error_text in error_texts:
+            error_surface.blit(error_text, (0, y))
+            y += error_text.get_height()
+        error_size = error_surface.get_size()
+        position = (self.position[0] + (self.board_size[0] - error_size[0]) / 2, self.loading_bar.position[1] + self.loading_bar.surface.get_height() * 3)
+        self.children.append(Drawable.Drawable(error_surface, position))
 
     def display(self) -> pygame.Surface|None:
         # self.loading_tile.surface = self.loading_tile.reload_for_loading(self.loading_start_time - time.time())
@@ -139,6 +162,8 @@ class LoadingScreen(Drawable.Drawable):
         return super().reload(current_time)
 
     def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> list[tuple[Drawable.Drawable]]|None:
+        if len(self.board.generation_info.exception_holder) > 0 and not self.is_showing_error:
+            self.show_error(self.board.generation_info.exception_holder[0])
         if self.board.is_finished_loading and not self.is_fading:
             self.opacity.set(0.0, LOADING_FADE_OUT_TIME)
             self.is_fading = True

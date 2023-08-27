@@ -16,8 +16,8 @@ except ImportError:
 def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, hard_mode:bool=False, gen_info:LU.GenerationInfo|None=None) -> tuple[list[int],list[int],dict[str,any]]|None:
     '''Returns the solution, the incomplete puzzle, and other data. Will return None if the first item of `break_holder` is True.'''
 
-    if seed is None: seed = random.randint(-2147483648, 2147483647)
-    after_seed = random.randint(-2147483648, 2147483647) # seed to start using after this is done to restore the randomness.
+    if seed is None: seed = LU.get_seed()
+    after_seed = LU.get_seed() # seed to start using after this is done to restore the randomness.
     random.seed(seed)
     if isinstance(size, int): size = (size, size)
     if size[0] % colors != 0: raise ValueError("Invalid width for %s colors!" % colors)

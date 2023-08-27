@@ -1,6 +1,6 @@
 import math
-import random
 import threading
+from typing import Any
 import time
 
 import pygame
@@ -28,6 +28,20 @@ BOARD_FADE_OUT_TIME_COMPLETE = 2.0
 COMPLETION_WAIT_TIME = 0.75
 REWIND_SPEED_MAX = 0.25 # delta time between rewinding tiles.
 
+class ExceptionThread(threading.Thread):
+    def __init__(self, group=None, target=None, name=None, args=(), kwargs=None, *, daemon=None, exception_holder:list|None=None):
+        self.exception_holder = exception_holder
+        super().__init__(group, target, name, args, kwargs, daemon=daemon)
+    def run(self) -> Any:
+        self.exception = None
+        try:
+            self.return_value = self._target(*self._args, **self._kwargs)
+        except BaseException as e:
+            self.exception = e
+            self.exception_holder.append(e)
+        finally:
+            del self._target, self._args, self._kwargs
+
 class Board(Drawable.Drawable):
 
     def __init__(self, size:int|tuple[int,int], seed:int=None, colors:int=2, position:tuple[int,int]=(0,0), pixel_size:int=640, restore_objects:list[tuple[Drawable.Drawable,int]]|None=None, children:list[Drawable.Drawable]|None=None, window_size:tuple[int,int]=None) -> None:
@@ -48,7 +62,7 @@ class Board(Drawable.Drawable):
         if self.has_axis_counters: largest_size += 1
         self.pixel_size = pixel_size
         self.display_size = pixel_size / largest_size
-        if seed is None: self.seed = random.randint(-2147483648, 2147483647)
+        if seed is None: self.seed = LU.get_seed()
         else:self.seed = seed
         self.size = size
         self.colors = colors
@@ -76,7 +90,10 @@ class Board(Drawable.Drawable):
 
 
         # self.loading_screen_init()
-        self.generation_thread = threading.Thread(target=self.get_board_from_seed)
+        exception_holder = []
+        self.generation_thread = ExceptionThread(target=self.get_board_from_seed, exception_holder=exception_holder)
+        self.generation_info = LU.GenerationInfo()
+        self.generation_info.exception_holder=exception_holder
         self.generation_thread.start()
 
     def kill_generator(self) -> None:
@@ -91,7 +108,7 @@ class Board(Drawable.Drawable):
     def get_board_from_seed(self) -> list[int]:
         self.full_board, self.empty_board, self.other_data, self.tiles = None, None, None, None
         # return
-        self.generation_info = LU.GenerationInfo()
+        self.generation_info.seed = self.seed
         generator_return = LevelCreator.generate(self.size, self.seed, self.colors, self.hard_mode, gen_info=self.generation_info)
         if generator_return is None: return
         self.full_board, self.empty_board, self.other_data = generator_return

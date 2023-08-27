@@ -81,9 +81,9 @@ def int_to_string(number:int, base:int) -> str: # https://stackoverflow.com/ques
 
 def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2, gen_info:LU.GenerationInfo|None=None) -> list[int]:
     # wave collapse algorithm I think
-    if seed is None: seed = random.randint(-2147483648, 2147483647)
+    if seed is None: seed = LU.get_seed()
     if isinstance(size, int): size = (size, size)
-    after_seed = random.randint(-2147483648, 2147483647) # seed to start using after this is done to restore the randomness.
+    after_seed = LU.get_seed() # seed to start using after this is done to restore the randomness.
     random.seed(seed)
     max_per_row = size[0] // colors
     max_per_column = size[1] // colors
