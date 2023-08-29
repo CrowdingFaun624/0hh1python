@@ -8,6 +8,7 @@ default = { # stores defaults
     "count_remaining": True,
     "counters_left": False,
     "counters_top": True,
+    "axis_checkboxes": False,
 }
 
 def create_if_non_existant() -> None:

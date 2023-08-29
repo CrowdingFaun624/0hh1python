@@ -5,12 +5,16 @@ from typing import Any
 import pygame
 
 import UI.Colors as Colors
+import UI.Drawable as Drawable
+import UI.Enablable as Enablable
 import UI.Fonts as Fonts
+import UI.Textures as Textures
 import UI.Tile as Tile
 import Utilities.Animation as Animation
 import Utilities.Bezier as Bezier
 
 COUNTERS_OPACITY_TIME = 0.25
+CHECK_OPACITY_TIME = 0.1
 
 def secant(theta:float) -> float:
     cos = math.cos(theta)
@@ -21,19 +25,52 @@ def cosecant(theta:float) -> float:
     if sin == 0: return float("Infinity")
     else: return 1 / sin
 
-class AxisCounter(Tile.Tile):
-    def __init__(self, tiles_to_count:list[Tile.Tile], axis_index:int, length:int, colors:int, is_row:bool, display_size:float, current_time:float, is_top_left:bool=True, show_remainder:bool=True) -> None:
+class AxisCounter(Tile.Tile, Enablable.Enablable):
+    def __init__(self, tiles_to_count:list[Tile.Tile], axis_index:int, length:int, colors:int, is_row:bool, display_size:float, current_time:float, is_top_left:bool=True, show_remainder:bool=True, counters:bool=True, checkboxes:bool=False) -> None:
         self.tiles_to_count = tiles_to_count
         self.is_row = is_row
         self.length = length
         self.is_top_left = is_top_left
         self.show_remainder = show_remainder
+        self.counters = counters
+        self.checkboxes = checkboxes
+
+
         self.previous_state = None
+        self.previous_tiles_values = None
+        self.checked = False
+        self.enabled = True
         self.opacity = 0
-        self.opacity_animations = [Animation.Animation(1.0, 1.0, COUNTERS_OPACITY_TIME, Bezier.ease_out) for i in range(colors)]
+        self.opacity_animations = [Animation.Animation(1.0, 1.0, COUNTERS_OPACITY_TIME, Bezier.ease_out, current_time) for i in range(colors)]
+        self.check_opacity = Animation.Animation(float(self.checked), float(self.checked), CHECK_OPACITY_TIME, Bezier.ease_out, current_time)
+        if self.checkboxes:
+            if self.counters: shrink_coefficient = 5
+            else: shrink_coefficient = 2
+            self.check_texture = Textures.get("check")
+            self.check_texture = pygame.transform.scale(self.check_texture, (int(display_size / shrink_coefficient), int(display_size / shrink_coefficient)))
+
+        if not (counters or checkboxes): raise ValueError("AxisCounter summoned as neither a counter nor checkbox!")
         super().__init__(axis_index, display_size, list(range(1, colors + 1)), axis_index % 2 == 0, colors, current_time, empty_color_name="background", multicolor_transparencies=(0.0, 0.25, 0.25))
 
     def get_surface(self, current_time:float) -> pygame.Surface:
+        surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
+        if self.counters:
+            surface.blit(self.get_counter_surface(current_time), (0, 0))
+        if self.checkboxes:
+            surface.blit(self.get_checkbox_surface(current_time), (0, 0))
+        return surface
+
+    def get_checkbox_surface(self, current_time:float) -> pygame.Surface:
+        base_surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
+        check_opacity = self.check_opacity.get(current_time)
+        if check_opacity != 0.0:
+            check_size = self.check_texture.get_size()
+            check_position = ((self.size - check_size[0]) / 2, (self.size - check_size[1]) / 2)
+            base_surface.blit(self.check_texture, check_position)
+            base_surface.set_alpha(255 * check_opacity)
+        return base_surface
+
+    def get_counter_surface(self, current_time:float) -> pygame.Surface:
         if len(self.tiles_to_count) != self.length: return None
         full_counts, all_counts = self.get_count()
         size = int(self.length // self.colors)
@@ -42,7 +79,6 @@ class AxisCounter(Tile.Tile):
         self.previous_count = (full_counts, all_counts)
 
         counts = full_counts
-        max_value = size
         remainders = full_remainders
         other_remainders = all_remainders
 
@@ -100,23 +136,42 @@ class AxisCounter(Tile.Tile):
 
     def display(self) -> pygame.Surface:
         current_time = time.time()
-        current_state = self.get_conditions(current_time)
+        current_state, current_tiles_values = self.get_conditions(current_time)
         if current_state != self.previous_state:
             self.previous_state = current_state
             self.surface = self.get_surface(current_time)
+        if current_tiles_values != self.previous_tiles_values:
+            self.previous_tiles_values = current_tiles_values
+            self.checked = False
         if self.surface is not None: self.surface.set_alpha(int(255 * self.opacity))
         return super().display()
 
-    def get_conditions(self, current_time:float) -> list[Any]:
+    def get_conditions(self, current_time:float) -> tuple[list[Any],list[int|list[int]]]:
         conditions:list[Any] = []
         time_since_click = current_time - self.click_time
         if len(self.tiles_to_count) == 0: pass
         if isinstance(self.tiles_to_count[0].value, int):
-            conditions.append([tile.value for tile in self.tiles_to_count])
-        else: conditions.append([tile.value[:] for tile in self.tiles_to_count])
+            tiles_values = [tile.value for tile in self.tiles_to_count]
+        else: tiles_values = [tile.value[:] for tile in self.tiles_to_count]
+        conditions.append(tiles_values)
+        conditions.append(self.checked)
+        conditions.append(self.check_opacity.get(current_time))
         if time_since_click <= Tile.TRANSITION_TIME: conditions.append(time_since_click)
-        return conditions
+        return conditions, tiles_values
 
     def set_alpha(self, value:int, this_surface:pygame.Surface|None=None) -> None:
         self.opacity = value / 255
         return super().set_alpha(value, this_surface)
+    
+    def tick(self, events:list[pygame.event.Event], screen_position:tuple[int, int]) -> list[tuple[Drawable.Drawable]]|None:
+
+        def mouse_button_down() -> None:
+            if not self.enabled: return
+            mouse_x, mouse_y = event.__dict__["pos"]
+            if mouse_x > screen_position[0] and mouse_y > screen_position[1] and mouse_x <= screen_position[0] + self.size and mouse_y <= screen_position[1] + self.size:
+                self.checked = not self.checked
+                self.check_opacity.set(float(self.checked))
+
+        for event in events:
+            match event.type:
+                case pygame.MOUSEBUTTONDOWN: mouse_button_down()

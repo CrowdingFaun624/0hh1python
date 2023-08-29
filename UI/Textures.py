@@ -14,6 +14,7 @@ def get_textures() -> dict[str,pygame.Surface]:
 textures = get_textures()
 
 TEXTURES = {
+    "check": "check.png",
     "close": ["close_dark.png", "close_light.png"],
     "cog": ["cog_dark.png", "cog_light.png"],
     "eye": ["eye_dark.png", "eye_light.png"],

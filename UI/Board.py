@@ -10,6 +10,7 @@ import LevelCreator.LevelHinter as LevelHinter
 import LevelCreator.LevelUtilities as LU
 import UI.AxisCounter as AxisCounter
 import UI.Button as Button
+import UI.Enablable as Enablable
 import UI.ButtonPanel as ButtonPanel
 import UI.Colors as Colors
 import UI.Drawable as Drawable
@@ -42,7 +43,7 @@ class ExceptionThread(threading.Thread):
         finally:
             del self._target, self._args, self._kwargs
 
-class Board(Drawable.Drawable):
+class Board(Drawable.Drawable, Enablable.Enablable):
 
     def __init__(self, size:int|tuple[int,int], seed:int=None, colors:int=2, position:tuple[int,int]=(0,0), pixel_size:int=640, restore_objects:list[tuple[Drawable.Drawable,int]]|None=None, children:list[Drawable.Drawable]|None=None, window_size:tuple[int,int]=None) -> None:
         if isinstance(size, int): size = (size, size)
@@ -53,13 +54,15 @@ class Board(Drawable.Drawable):
         self.count_remaining:bool = Settings.settings["count_remaining"]
         self.counters_left = Settings.settings["counters_left"]
         self.counters_top = Settings.settings["counters_top"]
+        self.has_checkboxes = Settings.settings["axis_checkboxes"]
+        self.has_axis_ends = self.has_axis_counters or self.has_checkboxes
 
         self.position = position
         self.should_destroy = False
         self.restore_objects = [] if restore_objects is None else restore_objects
         self.children = [] if children is None else children
         largest_size = max(size)
-        if self.has_axis_counters: largest_size += 1
+        if self.has_axis_ends: largest_size += 1
         self.pixel_size = pixel_size
         self.display_size = pixel_size / largest_size
         if seed is None: self.seed = LU.get_seed()
@@ -87,7 +90,6 @@ class Board(Drawable.Drawable):
         self.since_last_rewind = None # time at which the last tile was changed during rewind.
         self.current_rewind_point = None # history index the rewind is currently at; starts at len(self.history) - 1\
         self.rewind_final_tile:int|None = None # tile to highlight after finish rewind.
-
 
         # self.loading_screen_init()
         exception_holder = []
@@ -147,14 +149,14 @@ class Board(Drawable.Drawable):
         lock_surface = self.get_lock_surface()
         width = self.size[0]
         height = self.size[1]
-        if self.has_axis_counters: width += 1; height += 1
+        if self.has_axis_ends: width += 1; height += 1
         for index in range(width * height):
             x = index % width # display position
             y = index // width
             is_row_counter = (self.counters_left and x == 0) or (not self.counters_left and x == width - 1)
             is_column_counter = ((self.counters_top and y == 0) or (not self.counters_top and y == height - 1))
 
-            if self.has_axis_counters and (is_row_counter ^ is_column_counter):
+            if self.has_axis_ends and (is_row_counter ^ is_column_counter):
                 # axis counters
                 axis_x = x; axis_y = y
                 if self.counters_left and is_column_counter: axis_x -= 1
@@ -167,27 +169,27 @@ class Board(Drawable.Drawable):
                     is_top_left = self.counters_top
                     axis_index = axis_x
                     length = self.size[1]
-                axis_counter = AxisCounter.AxisCounter([], axis_index, length, self.colors, is_row_counter, self.display_size, current_time, is_top_left, self.count_remaining)
+                axis_counter = AxisCounter.AxisCounter([], axis_index, length, self.colors, is_row_counter, self.display_size, current_time, is_top_left, self.count_remaining, counters=self.has_axis_counters, checkboxes=self.has_checkboxes)
                 axis_counter.position = (self.position[0] + x * self.display_size, self.position[1] + y * self.display_size)
                 self.axis_counters.append(axis_counter)
 
-            elif self.has_axis_counters and is_row_counter and is_column_counter: pass # the tile in the corner
+            elif self.has_axis_ends and is_row_counter and is_column_counter: pass # the tile in the corner
             else:
                 # tiles
                 tile_x = x; tile_y = y
-                if self.has_axis_counters and self.counters_left: tile_x -= 1
-                if self.has_axis_counters and self.counters_top: tile_y -= 1
+                if self.has_axis_ends and self.counters_left: tile_x -= 1
+                if self.has_axis_ends and self.counters_top: tile_y -= 1
                 tile_index = tile_y * self.size[0] + tile_x # actual index
                 is_even = (tile_x + tile_y) % 2 == 1
                 if self.tile_is_empty(self.empty_board[tile_index]):
                     start_progress = 0.0
-                    can_modify = True
+                    enabled = True
                     is_locked = False
                 else:
                     start_progress = 1.0
-                    can_modify = False
+                    enabled = False
                     is_locked = True
-                tile = Tile.Tile(tile_index, self.display_size, self.display_board[tile_index], is_even, self.colors, current_time, start_progress, is_locked, can_modify, self.show_locks, lock_surface, mode="board")
+                tile = Tile.Tile(tile_index, self.display_size, self.display_board[tile_index], is_even, self.colors, current_time, start_progress, is_locked, enabled, self.show_locks, lock_surface, mode="board")
                 tile.position = (self.position[0] + x * self.display_size, self.position[1] + y * self.display_size)
                 if tile_index == 0: self.tile_origin = tile.position # where the top left corner of the tiles are. 
                 self.tiles.append(tile)
@@ -270,7 +272,7 @@ class Board(Drawable.Drawable):
 
     def rewind(self, history_point:int, place_point:int) -> None:
         '''Will *visually* rewind the board to the specified index in history.'''
-        self.can_modify = False
+        self.disable()
         self.decouple()
         self.rewind_state = 1
         self.rewind_point = history_point # where it's rewinding to
@@ -297,6 +299,17 @@ class Board(Drawable.Drawable):
             if self.tiles[index].is_locked:
                 self.tiles[index].show_lock = self.show_locks
 
+    def enable(self) -> None:
+        self.enabled = False
+        for child in self.children:
+            if isinstance(child, Enablable.Enablable):
+                child.enable()
+    def disable(self) -> None:
+        self.enabled = False
+        for child in self.children:
+            if isinstance(child, Enablable.Enablable):
+                child.disable()
+
     def mark_as_complete(self) -> None:
         self.marked_as_complete = True
         self.unhighlight()
@@ -306,13 +319,7 @@ class Board(Drawable.Drawable):
             self.is_complete = True
             self.final_time = self.player_board_fill_time - self.start_time
             self.opacity.set(0.0, BOARD_FADE_OUT_TIME_COMPLETE)
-            for child in self.children:
-                if isinstance(child, Button.Button):
-                    child.enabled = False
-                elif isinstance(child, ButtonPanel.ButtonPanel):
-                    child.disable()
-            for tile in self.tiles:
-                tile.can_modify = False
+            self.disable()
         else:
             first_error_tile, first_error_history_index, first_error_place_index = self.get_first_error_tile()
             self.rewind(first_error_history_index, first_error_place_index)
@@ -320,13 +327,7 @@ class Board(Drawable.Drawable):
     def button_close(self) -> None:
         self.recouple_player()
         self.opacity.set(0.0, BOARD_FADE_OUT_TIME_CLOSE)
-        for child in self.children:
-            if isinstance(child, Button.Button):
-                child.enabled = False
-            elif isinstance(child, ButtonPanel.ButtonPanel):
-                child.disable()
-        for tile in self.tiles:
-            tile.can_modify = False
+        self.disable()
 
     def button_undo(self) -> None:
         match self.rewind_state:
@@ -438,7 +439,7 @@ class Board(Drawable.Drawable):
             if event.__dict__["button"] not in up_values: return
             index = get_index()
             if index is None: return
-            if not self.tiles[index].can_modify: # if it is a locked tile
+            if not self.tiles[index].enabled: # if it is a locked tile
                 self.tiles[index].click_time_locked = time.time()
                 if self.tiles[index].is_locked:
                     self.show_locks = not self.show_locks
@@ -465,7 +466,7 @@ class Board(Drawable.Drawable):
                 direction = math.atan2(y - center_y, x - center_x) + (math.pi / 2) + (math.pi / self.colors) # in radians; clockwise; starts at left side and goes up; ends at 2pi
                 section = (int(direction // (math.tau / self.colors)) % self.colors) + 1
                 self.unhighlight()
-                if not self.tiles[index].can_modify: return
+                if not self.tiles[index].enabled: return
                 if event.__dict__["button"] != 3:
                     self.tiles[index].set_value_multi(section, section not in self.player_board[index])
                 else:
@@ -532,5 +533,5 @@ class Board(Drawable.Drawable):
         if self.rewind_state == 1 and self.current_rewind_point == self.rewind_point - 1:
             # finish rewinding
             self.rewind_state = 2
-            self.can_modify = True
+            self.enable()
             if self.rewind_final_tile is not None: self.highlight([self.rewind_final_tile])

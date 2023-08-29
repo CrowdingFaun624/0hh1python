@@ -26,6 +26,7 @@ class SettingsMenu(Drawable.Drawable):
             ("Count Remaining", "count_remaining", TOGGLEABLE, "", None, None),
             (("Counters on Right", "Counters on Left"), "counters_left", TOGGLEABLE, "", None, None),
             (("Counters on Bottom", "Counters on Top"), "counters_top", TOGGLEABLE, "", None, None),
+            ("Axis Checkboxes", "axis_checkboxes", TOGGLEABLE, "", None, None),
         ]
 
     def __init__(self, window_size:tuple[int,int], reload_carrier:list[bool], surface:pygame.Surface|None=None, restore_objects:list[tuple[Drawable.Drawable,int]]|None=None, children:list[Drawable.Drawable]|None=None) -> None:

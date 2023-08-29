@@ -130,7 +130,17 @@ class LoadingScreen(Drawable.Drawable):
 
     def show_error(self, exception:BaseException) -> None:
         self.is_showing_error = True
-        error_strings = ''.join(traceback.TracebackException.from_exception(exception).format()).split("\n")
+        error_strings_unspaced = ''.join(traceback.TracebackException.from_exception(exception).format()).split("\n")
+        error_strings:list[str] = []
+        MAX_LENGTH = 150
+        for error_string in error_strings_unspaced:
+            if len(error_string) < MAX_LENGTH: error_strings.append(error_string)
+            else:
+                while len(error_string) >= MAX_LENGTH:
+                    error_strings.append(error_string[:MAX_LENGTH])
+                    error_string = error_string[MAX_LENGTH:]
+                if len(error_string) > 0: error_strings.append(error_string)
+        
         font = Fonts.get_fitted_font_multi(error_strings, "josefin", 15, self.display_size[0], self.display_size[1])
         error_texts = [font.render(error_string, True, Colors.get("font.loading_screen_progress")) for error_string in error_strings]
         max_width = max(error_text.get_width() for error_text in error_texts)

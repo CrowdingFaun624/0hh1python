@@ -77,7 +77,6 @@ for object in objects:
 
 pygame.quit()
 
-# TODO: row/column checkboxes
 # TODO: local leaderboard and score
 # TODO: medium mode
 # TODO: accessibility

@@ -3,9 +3,10 @@ from collections.abc import Callable
 import pygame
 
 import UI.Drawable as Drawable
+import UI.Enablable as Enablable
 
 
-class Button(Drawable.Drawable):
+class Button(Drawable.Drawable, Enablable.Enablable):
     def __init__(self, surface:pygame.Surface, position:tuple[int,int], restore_objects:list[tuple[Drawable.Drawable,int]]|None=None, children:list[Drawable.Drawable,int]|None=None, left_click_action:tuple[Callable[[],None|list[tuple[Drawable.Drawable,int]]],list[any],dict[str,any]]|list|None=None, right_click_action:tuple[Callable[[],None|list[tuple[Drawable.Drawable,int]]],list[any],dict[str,any]]|list|None=None, start_enabled:bool=True) -> None:
         if left_click_action is None: self.left_click_action = []
         elif isinstance(left_click_action, list): self.left_click_action = left_click_action

@@ -5,6 +5,7 @@ import pygame
 
 import UI.Colors as Colors
 import UI.Drawable as Drawable
+import UI.Enablable as Enablable
 import Utilities.Animation as Animation
 import Utilities.Bezier as Bezier
 
@@ -21,7 +22,7 @@ def get_color_name(value:int, parity:bool, tile:"Tile"=None) -> str:
     if not Colors.is_exist(color_string): raise ValueError("Unsupported color/parity %s %s (%s)" % (str(value), str(parity), color_string))
     return color_string
 
-class Tile(Drawable.Drawable):
+class Tile(Drawable.Drawable, Enablable.Enablable):
     def __init__(self, index:int, size:int, value:int|list[int], is_even:bool, colors:int, current_time:float, start_progress:float=1.0, is_locked:bool=False, can_modify:bool=True, show_lock:bool=False, lock_surface:pygame.Surface|None=None, mode:str|None=None, empty_color_name:str="tile.0", multicolor_transparencies:tuple[float,float,float]=(0.0625,0.25,0.75)) -> None:
         self.index = index
         self.size = size
@@ -50,7 +51,7 @@ class Tile(Drawable.Drawable):
         self.is_mousing_over = False
         self.click_type = None
         self.is_mousing_over = False
-        self.can_modify = can_modify
+        self.enabled = can_modify
         self.show_lock = False
         self.lock_surface = lock_surface
         self.is_highlighted = False
@@ -81,7 +82,7 @@ class Tile(Drawable.Drawable):
     def set_multicolor_transition_target(self) -> float:
         if isinstance(self.value, int): return
         elif len(self.value) != 1: value = 0.0
-        elif not self.can_modify: value = 1.0
+        elif not self.enabled: value = 1.0
         elif self.is_mousing_over: value = 0.0
         else: value = 1.0
         self.multicolor_transition.set(value)

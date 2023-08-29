@@ -3,10 +3,11 @@ from collections.abc import Callable
 import pygame
 
 import UI.Button as Button
+import UI.Enablable as Enablable
 import UI.Drawable as Drawable
 import UI.Textures as Textures
 
-class ButtonPanel(Drawable.Drawable):
+class ButtonPanel(Drawable.Drawable, Enablable.Enablable):
     '''Creates a horizontal row of buttons. Give it a list of button parameters. Arguments: string (texture name) or (surface and function to recreate that surface); (click function, positional arguments, keyword arguments)'''
     def scale_texture(self, surface:pygame.Surface, vertical_space:float) -> pygame.Surface:
         multiplier = round(((vertical_space / 90) * 16)) / 16
@@ -35,10 +36,12 @@ class ButtonPanel(Drawable.Drawable):
         ButtonPanel.right_constraint = ButtonPanel.position[0] + width
 
     def disable(self) -> None:
+        self.enabled = False
         for button in self.children:
             button.enabled = False
     
     def enable(self) -> None:
+        self.enabled = True
         for button in self.children:
             button.enabled = True
 
