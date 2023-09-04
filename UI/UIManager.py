@@ -5,18 +5,25 @@ import UI.Button as Button
 import UI.ButtonPanel as ButtonPanel
 import UI.Drawable as Drawable
 import UI.Intro as Intro
+import UI.LeaderboardMenu as LeaderboardMenu
 import UI.LevelSelector as LevelSelector
 import UI.LoadingScreen as LoadingScreen
+import UI.Scrollbar as Scrollbar
 import UI.SettingsMenu as SettingsMenu
 
 reload_carrier = None # set to `[False]` by Main.py
 
 def get_main_object() -> Drawable.Drawable:
-    ButtonPanel.ButtonPanel.set_position(pygame.display.get_window_size())
+    reload()
     return Intro.Intro(pygame.display.get_window_size(), exit_intro)
 
+def reload() -> None:
+    display_size = pygame.display.get_window_size()
+    ButtonPanel.ButtonPanel.set_position(display_size)
+    Scrollbar.Scrollbar.set_position(display_size)
+
 def exit_intro(intro:Intro.Intro) -> list[tuple[Drawable.Drawable,int]]:
-    return [(LevelSelector.LevelSelector(pygame.display.get_window_size(), enter_board_from_level_selector, enter_settings_from_level_selector), 1)]
+    return [(LevelSelector.LevelSelector(pygame.display.get_window_size(), enter_board_from_level_selector, [enter_settings_from_level_selector, enter_leaderboard_from_level_selector]), 1)]
 
 def enter_board_from_level_selector(level_selector:LevelSelector.LevelSelector) -> list[tuple[Drawable.Drawable,int]]:
     for child in level_selector.children:
@@ -33,9 +40,9 @@ def finish_loading_screen(loading_screen:LoadingScreen.LoadingScreen) -> list[tu
     return [(loading_screen.board, -1)]
 
 def enter_settings_from_level_selector(level_selector:LevelSelector.LevelSelector) -> list[tuple[Drawable.Drawable,int]]:
-    level_selector.opacity.set(0.0)
-    level_selector.enabled = False
-    level_selector.is_fading_out = True
-    for child in level_selector.children:
-        if isinstance(child, Button.Button): child.enabled = False
+    level_selector.fade_out()
     return [(SettingsMenu.SettingsMenu(level_selector.display_size, restore_objects=[(level_selector, -1)], reload_carrier=reload_carrier), 1)]
+
+def enter_leaderboard_from_level_selector(level_selector:LevelSelector.LevelSelector) -> list[tuple[Drawable.Drawable,int]]:
+    level_selector.fade_out()
+    return [(LeaderboardMenu.LeaderboardMenu(level_selector.display_size, restore_objects=[(level_selector, -1)], reload_carrier=reload_carrier), 1)]

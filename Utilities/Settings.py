@@ -1,5 +1,4 @@
-import json
-import os
+import Utilities.JsonFileManager as JsonFileManager
 
 default = { # stores defaults
     "hard_mode": False,
@@ -11,44 +10,9 @@ default = { # stores defaults
     "axis_checkboxes": False,
 }
 
-def create_if_non_existant() -> None:
-    if not os.path.exists("./settings.json"):
-        with open("./settings.json", "wt") as f:
-            f.write(json.dumps(default, indent=2))
+manager = JsonFileManager.JsonFileManager("settings", default)
 
-def make_sure_all_keys_exist() -> None:
-    changed = False
-    with open("./settings.json", "rt") as f:
-        try:
-            data = json.loads(f.read())
-        except json.decoder.JSONDecodeError:
-            changed = True
-            data = {}
-    if not isinstance(data, dict): data = {}; changed = True
-    new = {}
-    for name, value in data.items():
-        if name in default:
-            changed = True
-            new[name] = data[name]
-    for name, value in default.items():
-        if name not in data:
-            changed = True
-            new[name] = value
-    if changed:
-        with open("./settings.json", "wt") as f:
-            f.write(json.dumps(new, indent=2))
+manager.create_if_non_existant()
+manager.check_all_keys_exist()
 
-def get_settings() -> dict[str,any]:
-    with open("./settings.json", "rt") as f:
-        return json.loads(f.read())
-
-def write(name:str, value:any) -> None:
-    if name not in settings: raise KeyError("Setting \"%s\" does not exist!" % name)
-    settings[name] = value
-    with open("./settings.json", "wt") as f:
-        f.write(json.dumps(settings, indent=2))
-
-create_if_non_existant()
-make_sure_all_keys_exist()
-
-settings = get_settings()
+settings = manager.contents

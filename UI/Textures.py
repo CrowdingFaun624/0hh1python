@@ -19,6 +19,7 @@ TEXTURES = {
     "cog": ["cog_dark.png", "cog_light.png"],
     "eye": ["eye_dark.png", "eye_light.png"],
     "history": ["history_dark.png", "history_light.png"],
+    "leaderboards": ["leaderboards_dark.png", "leaderboards_light.png"],
     "lock": "lock.png",
     "logo_32": "logo_32.png",
     "logo_1024": "logo_1024.png",

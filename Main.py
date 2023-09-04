@@ -64,7 +64,7 @@ while running:
     extend_objects(objects, new_objects)
     if UIManager.reload_carrier[0]:
         UIManager.reload_carrier[0] = False
-        UIManager.ButtonPanel.ButtonPanel.set_position(pygame.display.get_window_size())
+        UIManager.reload()
         for object in objects:
             object.reload(time.time())
 

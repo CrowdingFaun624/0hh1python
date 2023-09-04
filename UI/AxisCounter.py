@@ -25,7 +25,7 @@ def cosecant(theta:float) -> float:
     if sin == 0: return float("Infinity")
     else: return 1 / sin
 
-class AxisCounter(Tile.Tile, Enablable.Enablable):
+class AxisCounter(Tile.Tile):
     def __init__(self, tiles_to_count:list[Tile.Tile], axis_index:int, length:int, colors:int, is_row:bool, display_size:float, current_time:float, is_top_left:bool=True, show_remainder:bool=True, counters:bool=True, checkboxes:bool=False) -> None:
         self.tiles_to_count = tiles_to_count
         self.is_row = is_row

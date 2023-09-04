@@ -1,7 +1,7 @@
 import math
 import threading
-from typing import Any
 import time
+from typing import Any
 
 import pygame
 
@@ -9,16 +9,16 @@ import LevelCreator.LevelCreator as LevelCreator
 import LevelCreator.LevelHinter as LevelHinter
 import LevelCreator.LevelUtilities as LU
 import UI.AxisCounter as AxisCounter
-import UI.Button as Button
-import UI.Enablable as Enablable
 import UI.ButtonPanel as ButtonPanel
 import UI.Colors as Colors
 import UI.Drawable as Drawable
+import UI.Enablable as Enablable
 import UI.Fonts as Fonts
 import UI.Textures as Textures
 import UI.Tile as Tile
 import Utilities.Animation as Animation
 import Utilities.Bezier as Bezier
+import Utilities.LocalLeaderboard as LocalLeaderboard
 import Utilities.Settings as Settings
 
 CLICK_ACTION_LOCKED = "locked"
@@ -43,7 +43,7 @@ class ExceptionThread(threading.Thread):
         finally:
             del self._target, self._args, self._kwargs
 
-class Board(Drawable.Drawable, Enablable.Enablable):
+class Board(Enablable.Enablable):
 
     def __init__(self, size:int|tuple[int,int], seed:int=None, colors:int=2, position:tuple[int,int]=(0,0), pixel_size:int=640, restore_objects:list[tuple[Drawable.Drawable,int]]|None=None, children:list[Drawable.Drawable]|None=None, window_size:tuple[int,int]=None) -> None:
         if isinstance(size, int): size = (size, size)
@@ -299,17 +299,6 @@ class Board(Drawable.Drawable, Enablable.Enablable):
             if self.tiles[index].is_locked:
                 self.tiles[index].show_lock = self.show_locks
 
-    def enable(self) -> None:
-        self.enabled = False
-        for child in self.children:
-            if isinstance(child, Enablable.Enablable):
-                child.enable()
-    def disable(self) -> None:
-        self.enabled = False
-        for child in self.children:
-            if isinstance(child, Enablable.Enablable):
-                child.disable()
-
     def mark_as_complete(self) -> None:
         self.marked_as_complete = True
         self.unhighlight()
@@ -320,6 +309,7 @@ class Board(Drawable.Drawable, Enablable.Enablable):
             self.final_time = self.player_board_fill_time - self.start_time
             self.opacity.set(0.0, BOARD_FADE_OUT_TIME_COMPLETE)
             self.disable()
+            LocalLeaderboard.complete_board(self.size, self.colors, int(self.hard_mode), self.has_axis_counters, self.final_time)
         else:
             first_error_tile, first_error_history_index, first_error_place_index = self.get_first_error_tile()
             self.rewind(first_error_history_index, first_error_place_index)
@@ -439,7 +429,7 @@ class Board(Drawable.Drawable, Enablable.Enablable):
             if event.__dict__["button"] not in up_values: return
             index = get_index()
             if index is None: return
-            if not self.tiles[index].enabled: # if it is a locked tile
+            if not self.tiles[index].enabled or self.tiles[index].is_locked: # if it is a locked tile
                 self.tiles[index].click_time_locked = time.time()
                 if self.tiles[index].is_locked:
                     self.show_locks = not self.show_locks
