@@ -169,3 +169,6 @@ def get_greatest_valid_size(size:int, colors:int, max_size:int|None=None) -> int
             return data[colors][size]
         else: return min(max_size, data[colors][size])
     else: return fetch_greatest_valid_size(size, colors, max_size)
+
+def board_from_string(level_string:str) -> list[list[int]]:
+    return expand_board(2, [int(i) for i in level_string.replace("\n", "").replace("\t", "").replace(" ", "")])

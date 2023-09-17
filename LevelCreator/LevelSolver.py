@@ -398,7 +398,7 @@ def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_ti
         if usable_rules is True or usable_rules[3] is True: maximum = None
         else: maximum = usable_rules[3]
         if size[1] // colors > 2:
-            this_axis_maximum = min(maximum, int(size[0] // colors))
+            this_axis_maximum = min(maximum, int(size[0] // colors)) if maximum is not None else None
             for row_index in rows_to_solve_expensive:
                 index_list, should_continue = init_solve_row(row_index)
                 if should_continue: continue
@@ -407,7 +407,7 @@ def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_ti
                 if return_on_find and was_successful: return did_something, tiles_modified[0]
                 finalize_solve(row_index, was_successful, unsolved_rows, tiles_modified)
         if size[0] // colors > 2:
-            this_axis_maximum = min(maximum, int(size[1] // colors))
+            this_axis_maximum = min(maximum, int(size[1] // colors)) if maximum is not None else None
             for column_index in columns_to_solve_expensive:
                 index_list, should_continue = init_solve_column(column_index)
                 if should_continue: continue

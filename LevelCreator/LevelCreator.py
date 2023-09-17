@@ -7,11 +7,13 @@ try:
     import LevelCreator.LevelUtilities as LU
     import LevelCreator.LevelSolver as LevelSolver
     import LevelCreator.LevelValidator as LevelValidator
+    import LevelCreator.LevelSolverBruteForce as LevelSolverBruteForce
 except ImportError:
     import LevelGenerator
     import LevelUtilities as LU
     import LevelSolver
     import LevelValidator
+    import LevelSolverBruteForce
 
 def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, usable_rules:list[bool]|None=None, gen_info:LU.GenerationInfo|None=None) -> tuple[list[int],list[int],dict[str,any]]|None:
     '''Returns the solution, the incomplete puzzle, and other data. Will return None if the first item of `break_holder` is True.'''
@@ -34,7 +36,6 @@ def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, usable_rules:
     other_data = {"seed": seed, "quality": quality}
     random.seed(after_seed)
     return full_grid, empty_grid, other_data
-
 
 def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, usable_rules:list[bool]|None=None, gen_info:LU.GenerationInfo|None=None) -> list[int]:
     '''Removes tiles from the board so it's an actual puzzle.
@@ -63,9 +64,7 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, usab
      # for optimization. It tracks the tiles a tile is dependent on to be solved.
     tiles_cache:list[int] = [list(range(1, colors + 1))] * (size[0] * size[1])
     DEFAULT = list(range(1, colors + 1))
-    # debug_string = ""
     for index, tile_index in enumerate(random_range):
-        # print(tile_index)
         tile_value = tiles[tile_index]
         tiles[tile_index] = DEFAULT[:]
         LU.strip_dependencies(dependencies, tile_index, tiles_cache, colors)
@@ -74,6 +73,15 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, usab
         LU.restore_cache(tiles, tiles_cache, colors) # TODO: if the board is full except for one after this function; assume it's completable (and measure performance)
         # was_successful = LevelSolverOld.solve(size, tiles, tile_index, dependencies, colors)
         was_successful = LevelSolver.solve(size, colors, tiles, tile_index, dependencies, usable_rules=usable_rules)
+        # if not was_successful:
+        #     brute_force_solved = LevelSolverBruteForce.solve(size, colors, current_state)
+        #     if len(brute_force_solved) == 1:
+        #         print("Tile index: %i; true value: %s" % (tile_index, str(tile_value)))
+        #         print("Fast solver:")
+        #         LU.print_board(tiles, size)
+        #         print("Brute-force solver:")
+        #         LU.print_board(brute_force_solved[0], size)
+        #         raise RuntimeError("Missing a rule!")
         tiles_cache = tiles
         tiles = current_state
         # debug_string += str(int(was_successful))
@@ -94,7 +102,7 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, usab
 if __name__ == "__main__":
     os.chdir(os.path.split(os.path.split(__file__)[0])[0])
     size = 6
-    seed = 34
+    seed = None
     colors = 2
     usable_rules = [True, True, True, True, True]
     size_tuple = (size, size) if isinstance(size, int) else size
