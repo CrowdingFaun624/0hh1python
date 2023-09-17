@@ -71,7 +71,7 @@ while running:
 
     pygame.display.flip()
     clock.tick(60)
-    print(clock.get_fps())
+    # print(clock.get_fps())
 
 for object in objects:
     object.delete()
