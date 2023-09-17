@@ -244,7 +244,7 @@ def solve_balancing_possibilities(size:int, colors:int, indexes:list[int], tiles
             if max_per_row <= 2: break
     return was_successful, tiles_modified
 
-def solve_rule_4(size:int, colors:int, indexes:list[int], tiles:list[list[int]], dependencies:list[list[int]]|None=None) -> tuple[bool,list[int]]:
+def solve_rule_4(size:int, colors:int, indexes:list[int], tiles:list[list[int]], dependencies:list[list[int]]|None=None, maximum:int|None=None) -> tuple[bool,list[int]]:
     '''if the row contains the same amount of reds missing and blues missing, return without doing anything.
     Otherwise, for each empty tile, do the following: place the less common color there. Then for each other tile, place the more common color by default,
     but place the less common color if there would be a three-in-a-row error otherwise. If the number of additional less common tiles exceeds that color's
@@ -280,6 +280,7 @@ def solve_rule_4(size:int, colors:int, indexes:list[int], tiles:list[list[int]],
             if index not in tiles_involved_in_error: tiles_involved_in_error.append(index)
         testing_row[empty_index] = [more_common_color]
     
+    if maximum is not None and int(size // colors) - full_color_counts[less_common_color - 1] > maximum: return False, []
     testing_row = LU.copy_tiles(LU.get_values(indexes, tiles))
     tiles_involved_in_error:list[int] = [] # indexes with `indexes` that were involved in an error.
     error_count = 0 # how many times it did a bad.
@@ -293,7 +294,7 @@ def solve_rule_4(size:int, colors:int, indexes:list[int], tiles:list[list[int]],
             add_to_involved([previous_index1, next_index1, empty_index]); error_count += 1
         elif previous_index2 >= 0 and testing_row[previous_index2] == [less_common_color] and testing_row[previous_index1] == [less_common_color]:
             add_to_involved([previous_index2, previous_index1, empty_index]); error_count += 1
-        elif next_index2 < size and testing_row[next_index2] == [less_common_color] and testing_row[next_index1] == [less_common_color]:
+        elif next_index2 < size and testing_row[next_index2] == [less_common_color] and testing_row[next_index1] == [less_common_color]: # FIXME: An index error occured on this line on a 20x14
             add_to_involved([next_index2, next_index1, empty_index]); error_count += 1
         else:
             testing_row[empty_index] = [less_common_color]
@@ -307,13 +308,17 @@ def solve_rule_4(size:int, colors:int, indexes:list[int], tiles:list[list[int]],
             if dependencies is not None: dependencies[tile_index] = full_tile_indexes[:]
     return len(tiles_modified) > 0, tiles_modified
 
-def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_tile_index:int|None=None, dependencies:list[list[int]]|None=None, error_on_failure:bool=False, return_on_find:bool=False, hard_mode:bool=True) -> bool|int:
+MAX_RULES = 6
+# [three-in-a-row, balancing, cloning, rule-4, multicolor-balancing]
+
+def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_tile_index:int|None=None, dependencies:list[list[int]]|None=None, error_on_failure:bool=False, return_on_find:bool=False, usable_rules:list[bool|int]|None=None) -> bool|int:
     '''Solves a board, and returns the tiles list. If `desired_tile_index` is specified or `return_on_find` is True, it will break early.
     If `dependencies` is specified, it will extend items of the list with the tiles required to find them. Returns
     if it was able to find the desired tile or not.'''
     if isinstance(size, int): size = (size, size)
     rows_to_solve = get_rows_to_solve(size, tiles)
     columns_to_solve = get_columns_to_solve(size, tiles)
+    if usable_rules is None: usable_rules = True
     rows_to_solve_expensive = rows_to_solve[:]
     columns_to_solve_expensive = columns_to_solve[:]
     def init_solve_row(row_index:int) -> tuple[list[int],bool]:
@@ -390,21 +395,23 @@ def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_ti
     def rule_4() -> tuple[bool,None|int]:
         did_something = False
         tiles_modified:list[int] = []
+        if usable_rules is True or usable_rules[3] is True: maximum = None
+        else: maximum = usable_rules[3]
         if size[1] // colors > 2:
-            # for row_index in rows_to_solve:
+            this_axis_maximum = min(maximum, int(size[0] // colors))
             for row_index in rows_to_solve_expensive:
                 index_list, should_continue = init_solve_row(row_index)
                 if should_continue: continue
-                was_successful, tiles_modified = solve_rule_4(size[0], colors, index_list, tiles, dependencies)
+                was_successful, tiles_modified = solve_rule_4(size[0], colors, index_list, tiles, dependencies, this_axis_maximum)
                 if was_successful: did_something = True
                 if return_on_find and was_successful: return did_something, tiles_modified[0]
                 finalize_solve(row_index, was_successful, unsolved_rows, tiles_modified)
         if size[0] // colors > 2:
-            # for column_index in columns_to_solve:
+            this_axis_maximum = min(maximum, int(size[1] // colors))
             for column_index in columns_to_solve_expensive:
                 index_list, should_continue = init_solve_column(column_index)
                 if should_continue: continue
-                was_successful, tiles_modified = solve_rule_4(size[1], colors, index_list, tiles, dependencies)
+                was_successful, tiles_modified = solve_rule_4(size[1], colors, index_list, tiles, dependencies, this_axis_maximum)
                 if was_successful: did_something = True
                 if return_on_find and was_successful: return did_something, tiles_modified[0]
                 finalize_solve(column_index, was_successful, unsolved_columns, tiles_modified)
@@ -416,6 +423,7 @@ def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_ti
         if total_tries != 0 and not did_something:
             if error_on_failure:
                 LU.print_board(tiles, size)
+                print(usable_rules)
                 raise RuntimeError("Failed to solve board!")
             else: return False
         total_tries += 1
@@ -425,17 +433,19 @@ def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_ti
             unsolved_rows = set(rows_to_solve)
             unsolved_columns = set(columns_to_solve)
 
-            was_successful, return_now_value = three_in_a_row()
-            if return_now_value is not None: return return_now_value
-            if got_desired_tile(): return True
-            if was_successful: did_something = True
+            if usable_rules is True or usable_rules[0]:
+                was_successful, return_now_value = three_in_a_row()
+                if return_now_value is not None: return return_now_value
+                if got_desired_tile(): return True
+                if was_successful: did_something = True
 
-            was_successful, return_now_value = balancing()
-            if return_now_value is not None: return return_now_value
-            if got_desired_tile(): return True
-            if was_successful: did_something = True
+            if usable_rules is True or usable_rules[1]:
+                was_successful, return_now_value = balancing()
+                if return_now_value is not None: return return_now_value
+                if got_desired_tile(): return True
+                if was_successful: did_something = True
 
-            if colors != 2:
+            if (usable_rules is True or usable_rules[4]) and colors != 2:
                 was_successful, return_now_value = balancing_possibilities()
                 if return_now_value is not None: return return_now_value
                 if got_desired_tile(): return True
@@ -449,17 +459,18 @@ def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_ti
 
         unsolved_rows = set(rows_to_solve_expensive)
         unsolved_columns = set(columns_to_solve_expensive)
-        if hard_mode:
+        if usable_rules is True or (usable_rules[3] is True or usable_rules[3] > 0):
             was_successful, return_now_value = rule_4()
             if return_now_value is not None: return return_now_value
             if got_desired_tile(): return True
             if was_successful: did_something = True
 
-        was_successful, tiles_modified = solve_cloning(size, tiles, dependencies)
-        if return_on_find and len(tiles_modified) > 0: return tiles_modified[0]
-        if was_successful: did_something = True
-        if got_desired_tile(): return True
-        add_tiles_to_axes_to_solve(size, tiles_modified, [rows_to_solve, rows_to_solve_expensive], [columns_to_solve, columns_to_solve_expensive], unsolved_rows, unsolved_columns)
+        if usable_rules is True or usable_rules[2]:
+            was_successful, tiles_modified = solve_cloning(size, tiles, dependencies)
+            if return_on_find and len(tiles_modified) > 0: return tiles_modified[0]
+            if was_successful: did_something = True
+            if got_desired_tile(): return True
+            add_tiles_to_axes_to_solve(size, tiles_modified, [rows_to_solve, rows_to_solve_expensive], [columns_to_solve, columns_to_solve_expensive], unsolved_rows, unsolved_columns)
 
         for unsolved_row in unsolved_rows: rows_to_solve_expensive.remove(unsolved_row)
         for unsolved_column in unsolved_columns: columns_to_solve_expensive.remove(unsolved_column)

@@ -11,13 +11,13 @@ class Hint():
         self.target_tile = target_tile
         self.is_incorrect_hint = is_incorrect
 
-def get_hint(size:tuple[int,int], colors:int, empty_board:list[list[int]|int], full_board:list[list[int]|int]) -> Hint:
+def get_hint(size:tuple[int,int], colors:int, empty_board:list[list[int]|int], full_board:list[list[int]|int], usable_rules:list[bool]|None) -> Hint:
     if isinstance(empty_board[0], int): empty_board:list[list[int]] = LU.expand_board(colors, empty_board)
     if isinstance(full_board[0], int): full_board:list[list[int]] = LU.expand_board(colors, full_board)
     if LU.boards_match(empty_board, full_board):
         dependencies = [[][:] for i in range(size[0] * size[1])]
         solved_board = LU.copy_tiles(empty_board)
-        solver_result = LevelSolver.solve(size, colors, solved_board, None, dependencies, True, True)
+        solver_result = LevelSolver.solve(size, colors, solved_board, None, dependencies, True, True, usable_rules)
         if solver_result is False:
             print("Full:"); LU.print_board(full_board, size)
             print("Empty:"); LU.print_board(empty_board, size)

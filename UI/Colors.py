@@ -22,7 +22,11 @@ COLORS = { # lists of colors are [dark mode, light mode]
     "switch_button.border": [pygame.Color(255, 255, 255), pygame.Color(0, 0, 0)],
     "switch_button.switch": pygame.Color(128, 128, 128),
 
-    "tile.0": [pygame.Color(42, 42, 42), pygame.Color(213, 213, 213)],
+    "slider.inner": pygame.Color(16, 16, 16),
+    "slider.border": [pygame.Color(255, 255, 255), pygame.Color(0, 0, 0)],
+    "slider.switch": pygame.Color(128, 128, 128),
+
+    "tile.0": [pygame.Color(42, 42, 42), pygame.Color(212, 212, 212)],
     "tile.1_even": pygame.Color(213, 83, 54),
     "tile.1_odd": pygame.Color(194, 75, 49),
     "tile.2_even": pygame.Color(53, 184, 213),

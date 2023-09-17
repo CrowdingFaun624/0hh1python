@@ -18,7 +18,6 @@ class SettingsMenu(Menu.Menu):
     def __get_settings(self) -> None:
         self.settings:list[tuple[str|tuple[str,str],any,int,list[tuple[Callable,list[any],dict[str,any]]]|None,list[tuple[Callable,list[any],dict[str,any]]]|None]] = [
             # title|(off title, on title), setting name, setting type, description, off functions, on functions
-            ("Hard Mode", "hard_mode", TOGGLEABLE, "", None, None),
             (("Dark Mode", "Light Mode"), "light_mode", TOGGLEABLE, "", [(self.reload_everything,)], [(self.reload_everything,)]),
             ("Row/Column Counters", "axis_counters", TOGGLEABLE, "Show how many tiles are of each color.", None, None),
             ("Count Remaining", "count_remaining", TOGGLEABLE, "", None, None),

@@ -1,4 +1,8 @@
 import random
+import re
+
+from numpy import base_repr, binary_repr
+
 
 def get_row_indexes(size:tuple[int,int], y_position:int) -> list[int]:
     '''Returns a list of indexes in the row.'''
@@ -24,7 +28,7 @@ def get_incomplete_tile_indexes(index_list:list[int], tiles:list[list[int]]) -> 
     '''Returns tiles in the index list whose values are not compeltely known.'''
     return [tile_index for tile_index in index_list if len(tiles[tile_index]) != 1]
 def get_incomplete_tile_indexes_within(index_list:list[int], tiles:list[list[int]]) -> list[int]:
-    '''Returns position of tile within the index list (not index within `tiles`) from tiles in the index list whose values are not compeltely known.'''
+    '''Returns position of tile within the index list (not index within `tiles`) from tiles in the index list whose values are not completely known.'''
     return [index for index, tile_index in enumerate(index_list) if len(tiles[tile_index]) != 1]
 
 def expand_board(colors:int, tiles:list[int]) -> list[list[int]]:
@@ -132,3 +136,36 @@ class GenerationInfo(): # for communication between threads
         self.total_clears = 0
         self.seed = None
         self.exception_holder = None
+
+def int_to_string(number:int, base:int) -> str: # https://stackoverflow.com/questions/2267362/how-to-convert-an-integer-to-a-string-in-any-base
+    return binary_repr(number) if base == 2 else base_repr(number, base)
+
+def is_invalid_string(colors:int, max_per_row:int, regular_expression:re.Pattern[str], row:str) -> bool:
+    '''Detects the invalidity of a row or column if red is 0 and blue is 1'''
+    for color in range(colors):
+        if row.count(str(color)) > max_per_row: return True
+    if bool(regular_expression.search(row)): return True
+    return False
+
+def fetch_greatest_valid_size(size:int, colors:int, max_size:int|None=None) -> int:
+    regular_expression = re.compile("|".join([str(i) + "{3}" for i in range(colors)]))
+    max_per_row = int(size // colors)
+    total = 0
+    for index in range(colors ** size):
+        if not is_invalid_string(colors, max_per_row, regular_expression, int_to_string(index, colors).zfill(size)):
+            total += 1
+        if max_size is not None and total >= max_size: return max_size
+    return total
+
+def get_greatest_valid_size(size:int, colors:int, max_size:int|None=None) -> int:
+    '''Returns the greatest vertical size for any given horizontal size. Will only return up to the max_size if specified. e.g. 6 -> 14'''
+    data = { # pre-programmed values for speedy fast
+            2: {2: 2, 4: 6, 6: 14, 8: 34, 10: 84, 12: 208, 14: 518, 16: 1296, 18: 3254, 20: 8196},
+            3: {3: 6, 6: 90, 9: 1314, 12: 21084, 15: 353772},
+            4: {4: 24, 8: 2520}
+           }
+    if colors in data and size in data[colors]:
+        if max_size is None:
+            return data[colors][size]
+        else: return min(max_size, data[colors][size])
+    else: return fetch_greatest_valid_size(size, colors, max_size)

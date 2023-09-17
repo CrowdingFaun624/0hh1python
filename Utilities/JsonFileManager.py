@@ -49,6 +49,10 @@ class JsonFileManager():
             self.check_all_keys_exist()
             with open(self.file_path, "rt") as f:
                 return json.load(f)
+        except FileNotFoundError:
+            self.create_if_non_existant()
+            with open(self.file_path, "rt") as f:
+                return json.load(f)
 
     def write(self, name:str, value:Any) -> None:
         if name not in self.contents:

@@ -48,8 +48,9 @@ def animate(animation:dict[float,float], duration:float, bezier_function:Callabl
     return bezier_function(animation[min_time], animation[max_time], past_min / inter_period)
 
 class Animation():
-    def __init__(self, current_value:float, start_value:float, duration:float, bezier_function:Callable[[float,float,float],float], current_time:float|None=None) -> None:
+    def __init__(self, current_value:float, start_value:float|None, duration:float, bezier_function:Callable[[float,float,float],float], current_time:float|None=None) -> None:
         self.next_value = current_value
+        if start_value is None: start_value = current_value
         self.current_value = start_value
         self.previous_value = start_value
         self.duration = duration
@@ -92,7 +93,8 @@ class Animation():
 
 class MultiAnimation(Animation):
     '''Animates using multiple values at the same time in a tuple.'''
-    def __init__(self, current_value:tuple[float], start_value:tuple[float], duration:float, bezier_function:Callable[[float,float,float],float], current_time:float|None=None) -> None:
+    def __init__(self, current_value:tuple[float], start_value:tuple[float]|None, duration:float, bezier_function:Callable[[float,float,float],float], current_time:float|None=None) -> None:
+        if start_value is None: start_value = current_value
         assert len(current_value) == len(start_value)
         self.direction = [None] * len(current_value)
         super().__init__(current_value, start_value, duration, bezier_function, current_time)

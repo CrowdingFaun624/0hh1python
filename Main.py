@@ -6,6 +6,7 @@ import UI.Colors as Colors
 import UI.Drawable as Drawable
 import UI.Textures as Textures
 import UI.UIManager as UIManager
+import UI.FakeBoard as FakeBoard
 
 
 def extend_objects(objects_input:list[Drawable.Drawable], extension:list[tuple[Drawable.Drawable,int]]) -> None:
@@ -70,15 +71,16 @@ while running:
 
     pygame.display.flip()
     clock.tick(60)
-    # print(clock.get_fps())
+    print(clock.get_fps())
 
 for object in objects:
     object.delete()
 
 pygame.quit()
 
-# TODO: local leaderboard and score
-# TODO: medium mode
+# TODO: redo level selector
+#   TODO: ability to lock size w/ button so you don't have to move each slider individually.
+#   TODO: difficulty presets.
 # TODO: accessibility
 # TODO: different languages
 # TODO: tutorial

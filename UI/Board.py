@@ -45,11 +45,10 @@ class ExceptionThread(threading.Thread):
 
 class Board(Enablable.Enablable):
 
-    def __init__(self, size:int|tuple[int,int], seed:int=None, colors:int=2, position:tuple[int,int]=(0,0), pixel_size:int=640, restore_objects:list[tuple[Drawable.Drawable,int]]|None=None, children:list[Drawable.Drawable]|None=None, window_size:tuple[int,int]=None) -> None:
+    def __init__(self, size:int|tuple[int,int], seed:int=None, colors:int=2, usable_rules:list[bool]|None=None, position:tuple[int,int]=(0,0), pixel_size:int=640, restore_objects:list[tuple[Drawable.Drawable,int]]|None=None, children:list[Drawable.Drawable]|None=None, window_size:tuple[int,int]=None) -> None:
         if isinstance(size, int): size = (size, size)
         super().__init__()
 
-        self.hard_mode:bool = Settings.settings["hard_mode"]
         self.has_axis_counters:bool = Settings.settings["axis_counters"]
         self.count_remaining:bool = Settings.settings["count_remaining"]
         self.counters_left = Settings.settings["counters_left"]
@@ -69,11 +68,14 @@ class Board(Enablable.Enablable):
         else:self.seed = seed
         self.size = size
         self.colors = colors
+        if usable_rules is None: usable_rules = [1, 1, 1, 2, 1]
+        if usable_rules[4] > int(max(size) // colors): usable_rules[4] = int(max(size) // colors)
+        self.usable_rules = usable_rules
 
         self.__current_mouse_over:int = None
         self.show_locks = False # TODO: make this carry over between board instances.
         self.is_complete = False # True only when the board locks after correctly completing it.
-        self.opacity = Animation.Animation(0.0, 0.0, BOARD_FADE_IN_TIME, Bezier.ease_in)
+        self.opacity = Animation.Animation(0.0, None, BOARD_FADE_IN_TIME, Bezier.ease_in)
         self.is_finished_loading = False
         self.window_size = window_size
         self.hint_tiles:list[int] = []
@@ -111,7 +113,7 @@ class Board(Enablable.Enablable):
         self.full_board, self.empty_board, self.other_data, self.tiles = None, None, None, None
         # return
         self.generation_info.seed = self.seed
-        generator_return = LevelCreator.generate(self.size, self.seed, self.colors, self.hard_mode, gen_info=self.generation_info)
+        generator_return = LevelCreator.generate(self.size, self.seed, self.colors, self.usable_rules, gen_info=self.generation_info)
         if generator_return is None: return
         self.full_board, self.empty_board, self.other_data = generator_return
         if self.colors == 2:
@@ -151,7 +153,7 @@ class Board(Enablable.Enablable):
         height = self.size[1]
         if self.has_axis_ends: width += 1; height += 1
         for index in range(width * height):
-            x = index % width # display position
+            x = index % width # tile position
             y = index // width
             is_row_counter = (self.counters_left and x == 0) or (not self.counters_left and x == width - 1)
             is_column_counter = ((self.counters_top and y == 0) or (not self.counters_top and y == height - 1))
@@ -309,7 +311,7 @@ class Board(Enablable.Enablable):
             self.final_time = self.player_board_fill_time - self.start_time
             self.opacity.set(0.0, BOARD_FADE_OUT_TIME_COMPLETE)
             self.disable()
-            LocalLeaderboard.complete_board(self.size, self.colors, int(self.hard_mode), self.has_axis_counters, self.final_time)
+            LocalLeaderboard.complete_board(self.size, self.colors, self.usable_rules, self.has_axis_counters, self.final_time)
         else:
             first_error_tile, first_error_history_index, first_error_place_index = self.get_first_error_tile()
             self.rewind(first_error_history_index, first_error_place_index)
@@ -376,7 +378,7 @@ class Board(Enablable.Enablable):
             self.unhighlight()
         else:
             self.unhighlight()
-            hint = LevelHinter.get_hint(self.size, self.colors, self.player_board, self.full_board)
+            hint = LevelHinter.get_hint(self.size, self.colors, self.player_board, self.full_board, self.usable_rules)
             if hint.is_incorrect_hint:
                 first_error_tile, first_error_history_index, first_error_place_index = self.get_first_error_tile()
                 self.rewind(first_error_history_index, first_error_place_index)

@@ -121,7 +121,7 @@ class LoadingScreen(Drawable.Drawable):
         progress_text_position = (self.position[0] + (self.board_size[0] - progress_text_size[0]) / 2, self.position[1] + (self.board_size[1] * 1.0 - progress_text_size[1]) / 2 - loading_bar_size[1] * 1.5)
         self.progress_text = Drawable.Drawable(progress_text, progress_text_position)
 
-        seed_text = Fonts.loading_screen_progress.render("%ix%i:%i:%s:%i" % (self.board.size[0], self.board.size[1], self.board.colors, str(self.board.hard_mode), self.board.generation_info.seed), True, Colors.get("font.loading_screen_progress"))
+        seed_text = Fonts.loading_screen_progress.render("%ix%i:%i:%s:%i" % (self.board.size[0], self.board.size[1], self.board.colors, "[" + ",".join(str(int(rule)) for rule in self.board.usable_rules) + "]", self.board.generation_info.seed), True, Colors.get("font.loading_screen_progress"))
         seed_text_size = seed_text.get_size()
         seed_text_position = (self.position[0] + (self.board_size[0] - seed_text_size[0]) / 2, self.position[1] + (self.board_size[1] * 1.0 - seed_text_size[1]) / 2 + loading_bar_size[1] * 1.5)
         self.seed_text = Drawable.Drawable(seed_text, seed_text_position)

@@ -36,14 +36,14 @@ class Tile(Enablable.Enablable):
         self.multicolor_transparencies = multicolor_transparencies
         if isinstance(value, int):
             current_color = Colors.get(get_color_name(value, is_even, self))
-            self.shadow_opacity = Animation.Animation(float(value != 0), float(value != 0), TRANSITION_TIME, Bezier.ease_out, current_time)
+            self.shadow_opacity = Animation.Animation(float(value != 0), None, TRANSITION_TIME, Bezier.ease_out, current_time)
         else:
             current_color = Colors.get(get_color_name(value[0], is_even, self)) if len(value) == 1 else Colors.get(get_color_name(0, is_even, self))
-            self.section_opacities:list[Animation.Animation] = [Animation.Animation(cur := (self.get_section_opacity(color) if color in value else 0.0), cur, TRANSITION_TIME, Bezier.ease_out) for color in range(1, colors + 1)]
-            self.multicolor_transition = Animation.Animation(float(self.is_locked), float(self.is_locked), TRANSITION_TIME, Bezier.ease_out)
-            self.shadow_opacity = Animation.Animation(float(len(value) == 1), float(len(value) == 1), TRANSITION_TIME, Bezier.ease_out, current_time)
+            self.section_opacities:list[Animation.Animation] = [Animation.Animation(self.get_section_opacity(color) if color in value else 0.0, None, TRANSITION_TIME, Bezier.ease_out) for color in range(1, colors + 1)]
+            self.multicolor_transition = Animation.Animation(float(self.is_locked), None, TRANSITION_TIME, Bezier.ease_out)
+            self.shadow_opacity = Animation.Animation(float(len(value) == 1), None, TRANSITION_TIME, Bezier.ease_out, current_time)
         color_tuple = (current_color.r, current_color.g, current_color.b)
-        self.color = Animation.MultiAnimation(color_tuple, color_tuple, TRANSITION_TIME, Bezier.ease_out)
+        self.color = Animation.MultiAnimation(color_tuple, None, TRANSITION_TIME, Bezier.ease_out)
 
         self.mouse_over_time = 0.0
         self.mouse_over_start = 0.0
@@ -56,7 +56,7 @@ class Tile(Enablable.Enablable):
         self.is_highlighted = False
         self.highlight_time = None
         self.highlight_pulse_opacity = 0.0
-        self.highlight_transition_opacity = Animation.Animation(0.0, 0.0, TRANSITION_TIME, Bezier.ease_out)
+        self.highlight_transition_opacity = Animation.Animation(0.0, None, TRANSITION_TIME, Bezier.ease_out)
         
         self.transition_progress = start_progress
         self.multicolor_brightness_progress = [0.0] * self.colors; self.multicolor_brightness_progress_eased = [0.0] * self.colors

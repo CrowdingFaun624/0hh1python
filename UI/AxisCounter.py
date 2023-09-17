@@ -41,7 +41,7 @@ class AxisCounter(Tile.Tile):
         self.checked = False
         self.enabled = True
         self.opacity = 0
-        self.opacity_animations = [Animation.Animation(1.0, 1.0, COUNTERS_OPACITY_TIME, Bezier.ease_out, current_time) for i in range(colors)]
+        self.opacity_animations = [Animation.Animation(1.0, None, COUNTERS_OPACITY_TIME, Bezier.ease_out, current_time) for i in range(colors)]
         self.check_opacity = Animation.Animation(float(self.checked), float(self.checked), CHECK_OPACITY_TIME, Bezier.ease_out, current_time)
         if self.checkboxes:
             if self.counters: shrink_coefficient = 5

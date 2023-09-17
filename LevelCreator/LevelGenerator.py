@@ -29,13 +29,6 @@ def clear_row_from_tiles(size:tuple[int,int], tiles:list[int], valid_rows:collec
 def get_column(size:tuple[int,int], tiles:list[int], x_position:int) -> list[int]:
     return [i for i in tiles[x_position::size[0]]]
 
-def is_invalid_string(colors:int, max_per_row:int, regular_expression:re.Pattern[str], row:str) -> bool:
-    '''Detects the invalidity of a row or column if red is 0 and blue is 1'''
-    for color in range(colors):
-        if row.count(str(color)) > max_per_row: return True
-    if bool(regular_expression.search(row)): return True
-    return False
-
 def is_invalid_list(colors:int, y_position:int, max_per_column:int, column:list[int]) -> bool:
     '''Detects the invalidity of a row or column if empty is 0, red is 1, and blue is 2'''
     if y_position >= 2 and (column[y_position] != -1 and column[y_position] == column[y_position-1] and column[y_position] == column[y_position-2]): return True
@@ -49,8 +42,8 @@ def get_valid_rows(size:tuple[int,int], colors:int, max_per_row:int, regular_exp
         if cached_data is not None: return cached_data
     valid_rows:list[list[int]] = []
     for index in range(colors ** size[0]):
-        index_string = int_to_string(index, colors).zfill(size[0])
-        if not is_invalid_string(colors, max_per_row, regular_expression, index_string):
+        index_string = LU.int_to_string(index, colors).zfill(size[0])
+        if not LU.is_invalid_string(colors, max_per_row, regular_expression, index_string):
             index_list = [int(i) for i in index_string]
             valid_rows.append(index_list)
     if colors ** size[0] >= 4096: create_cache(size, colors, valid_rows)
@@ -60,7 +53,7 @@ def create_cache(size:tuple[int,int], colors:int, valid_rows:list[list[int]]) ->
     path_name = "./_cache/solution_%s_%s.bin" % (size[0], colors)
     if os.path.exists(path_name): return
     byte_length = ceil((size[0] + 7) / (16 / colors)) # how long each valid row is
-    data_bytes = b"".join([int("".join(int_to_string(tile, colors) for tile in valid_row), colors).to_bytes(byte_length, "big") for valid_row in valid_rows])
+    data_bytes = b"".join([int("".join(LU.int_to_string(tile, colors) for tile in valid_row), colors).to_bytes(byte_length, "big") for valid_row in valid_rows])
     with open(path_name, "wb") as f:
         f.write(data_bytes)
 
@@ -73,11 +66,8 @@ def fetch_cache(size:tuple[int,int], colors:int) -> list[list[int]]|None:
         f.seek(0, os.SEEK_END); file_size = f.tell(); f.seek(0, os.SEEK_SET) # get size
         for i in range(file_size // byte_length):
             data = f.read(byte_length)
-            valid_rows.append([int(tile, colors) for tile in list(int_to_string(int.from_bytes(data, "big"), colors).zfill(size[0]))])
+            valid_rows.append([int(tile, colors) for tile in list(LU.int_to_string(int.from_bytes(data, "big"), colors).zfill(size[0]))])
     return valid_rows
-
-def int_to_string(number:int, base:int) -> str: # https://stackoverflow.com/questions/2267362/how-to-convert-an-integer-to-a-string-in-any-base
-    return binary_repr(number) if base == 2 else base_repr(number, base)
 
 def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2, gen_info:LU.GenerationInfo|None=None) -> list[int]:
     # wave collapse algorithm I think
@@ -129,9 +119,12 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2, gen_info
     return tiles
 
 if __name__ == "__main__":
-    SIZE = 6
+    SIZE = 8
     SEED = None
-    COLORS = 2
+    COLORS = 4
 
     full = generate_solution(SIZE, SEED, COLORS)
     LU.print_board(full, SIZE)
+# TODO: do not add the current row to the board every single time; instead, use its data along with the rest of the board to do stuff
+# TODO: do not recount the tiles every single time, instead keep a list that remembers the counts
+# TODO: simplify to use less separate function calls in very high-trafic code.

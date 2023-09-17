@@ -36,7 +36,7 @@ def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[
             tiles[tile_index] = [pick_value]
             # print("Before %i (%i):" % (tile_index, index))
             # LevelPrinter.print_board(tiles, size)
-            LevelSolver.solve(size, colors, tiles, None, dependencies, hard_mode=True) # TODO: make the starting rows_to_solve and columns_to_solve be only the ones with the set tile.
+            LevelSolver.solve(size, colors, tiles, None, dependencies) # TODO: make the starting rows_to_solve and columns_to_solve be only the ones with the set tile.
             # print("After: %i (%i):" % (tile_index, index))
             # LevelPrinter.print_board(tiles, size)
             if LevelValidator.is_valid(tiles, size, colors):

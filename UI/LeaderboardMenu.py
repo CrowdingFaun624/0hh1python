@@ -23,8 +23,8 @@ class LeaderboardMenu(Menu.Menu):
         output:dict[tuple[tuple[int,int],int,int,bool],dict[str,int|float]] = {}
         for key, value in leaderboard.items():
             if not key.startswith("board_"): continue
-            _, data_point, width, height, colors, difficulty, axis_counters = key.split("_")
-            board_data = (int(colors), (int(width), int(height)), int(difficulty), bool(int(axis_counters)))
+            _, data_point, width, height, colors, usable_rules, axis_counters = key.split("_")
+            board_data = (int(colors), (int(width), int(height)), tuple(int(rule) for rule in usable_rules[1:-1].split(",")), bool(int(axis_counters)))
             if board_data not in output: output[board_data] = {}
             output[board_data][data_point] = value
         for board_data, values in output.items():
@@ -62,7 +62,7 @@ class LeaderboardMenu(Menu.Menu):
         menu_objects:list[Drawable.Drawable] = []
 
         for board_data, records in list(scores.items()):
-            colors, size, difficulty, axis_counters = board_data
+            colors, size, usable_rules, axis_counters = board_data
             if previous_color == colors:
                 current_value -= 1
                 current_value = ((current_value - 1) % colors) + 1
@@ -83,16 +83,16 @@ class LeaderboardMenu(Menu.Menu):
             menu_objects.append(size_object)
 
             colors_text = "Colors: %i" % colors
-            difficulty_text = "Difficulty: %i" % difficulty
+            usable_rules_text = "Rules: %s" % (", ".join(str(rule) for rule in usable_rules))
             axis_counters_text = "Has Axis Counters" if axis_counters else "No Axis Counters"
             other_stats_width = (self.display_size[0] - tile_size[0] - COLUMN_PADDING * 2) * OTHER_STATS_WIDTH
-            other_stats_font = Fonts.get_fitted_font_multi([colors_text, difficulty_text, axis_counters_text], "josefin", int(ROW_HEIGHT / 3), other_stats_width, ROW_HEIGHT / 3)
+            other_stats_font = Fonts.get_fitted_font_multi([colors_text, usable_rules_text, axis_counters_text], "josefin", int(ROW_HEIGHT / 3), other_stats_width, ROW_HEIGHT / 3)
             
             colors_surface = other_stats_font.render(colors_text, True, Colors.get("font"))
-            difficulty_surface = other_stats_font.render(difficulty_text, True, Colors.get("font"))
+            usable_rules_surface = other_stats_font.render(usable_rules_text, True, Colors.get("font"))
             axis_counters_surface = other_stats_font.render(axis_counters_text, True, Colors.get("font"))
 
-            other_stats_surfaces = [colors_surface, difficulty_surface, axis_counters_surface]
+            other_stats_surfaces = [colors_surface, usable_rules_surface, axis_counters_surface]
             max_width = max(surface.get_width() for surface in other_stats_surfaces)
             other_stats_surface = pygame.Surface((max_width, ROW_HEIGHT), pygame.SRCALPHA)
             other_stats_surface.blits((surface, (0, index * ROW_HEIGHT / 3)) for index, surface in enumerate(other_stats_surfaces))

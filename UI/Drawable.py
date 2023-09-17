@@ -50,6 +50,14 @@ class Drawable():
         for restore_object in self.restore_objects:
             restore_object[0].delete()
 
+    def update(self, object:"Drawable") -> None:
+        '''Sets this object to have the surface and position of the input object.
+        Can be used when references to this object must be preserved.'''
+        self.surface = object.surface
+        self.position = object.position
+        self.children = object.children
+        self.restore_objects = object.restore_objects
+
     def set_alpha(self, value:int, this_surface:pygame.Surface|None=None) -> None:
         '''Sets the alpha of an object and its children. If an object does not have a surface attribute, use this_surface.'''
         if this_surface is not None:

@@ -33,7 +33,7 @@ def test_a_lot() -> None:
         index += 1
         index = index % pattern_length
 
-def time_test(specified_colors:list[int]|None=None, hard_mode:bool=True) -> dict[int,dict[str,any]]:
+def time_test(specified_colors:list[int]|None=None, usable_rules:list[bool]|None=None) -> dict[int,dict[str,any]]:
     def raise_error(message:str) -> None:
         print("FULL:")
         LU.print_board(full, size)
@@ -59,7 +59,7 @@ def time_test(specified_colors:list[int]|None=None, hard_mode:bool=True) -> dict
                 print(size, ": ", percentage, "%, seed ", i, sep="")
                 start_time = time.perf_counter()
                 gen_info = LU.GenerationInfo()
-                full, empty, other_data = LevelCreator.generate(size, i, colors, hard_mode, gen_info=gen_info)
+                full, empty, other_data = LevelCreator.generate(size, i, colors, usable_rules, gen_info=gen_info)
                 all_qualities.append(other_data["quality"])
                 all_total_clears.append(gen_info.total_clears)
                 end_time = time.perf_counter()
@@ -68,7 +68,7 @@ def time_test(specified_colors:list[int]|None=None, hard_mode:bool=True) -> dict
                 solved = LU.expand_board(colors, empty)
                 start_time = time.perf_counter()
                 try:
-                    LevelSolver.solve(size, colors, solved, None, None, True, hard_mode=hard_mode)
+                    LevelSolver.solve(size, colors, solved, None, None, True, usable_rules=usable_rules)
                 except RuntimeError:
                     raise_error("Failed to solve board!")
                 end_time = time.perf_counter()
@@ -105,7 +105,7 @@ def time_test_rectangle(specified_colors:list[int]|None=None) -> dict[int,dict[s
     print(output)
     return output
 
-def get_seed_hashes(size:int=4, count:int|None=None, colors:int=0, hard_mode:bool=False, file:str|None=None) -> None:
+def get_seed_hashes(size:int=4, count:int|None=None, colors:int=0, usable_rules:list[bool]|None=None, file:str|None=None) -> None:
     '''Generates a list of "hashes", which are recorded in the file. if `colors` is 0, then it uses the default LevelCreator; otherwise, it uses the color one'''
     if file is not None and os.path.exists(file): raise FileExistsError("Cannot write to existing file!")
     color = 2 if colors == 0 else colors
@@ -113,7 +113,7 @@ def get_seed_hashes(size:int=4, count:int|None=None, colors:int=0, hard_mode:boo
     output:dict[int,int] = {}
     for seed in range(count):
         print(seed)
-        full, empty, data = LevelCreator.generate(size, seed, color, hard_mode)
+        full, empty, data = LevelCreator.generate(size, seed, color, usable_rules)
         trinary_string = "".join([str(i) for i in empty])
         result_int = int(trinary_string, color + 1)
         output[seed] = result_int
@@ -196,9 +196,9 @@ def test_level_solver() -> None:
 
 if __name__ == "__main__":
     # time_test_rectangle()
-    time_test(hard_mode=True)
+    time_test()
     # time_distribution(12, 8, 3)
-    # get_seed_hashes(6, colors=2, hard_mode=True, file="C:/Users/ander/Downloads/0hh1_6_2_without_change.json")
+    # get_seed_hashes(6, colors=2, None, file="C:/Users/ander/Downloads/0hh1_6_2_without_change.json")
     # test_a_lot()
     # time_distribution(12, file="C:/Users/ander/Downloads/0hh1_12_distributions.json")
     # test_level_solver()

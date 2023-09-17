@@ -13,7 +13,7 @@ except ImportError:
     import LevelSolver
     import LevelValidator
 
-def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, hard_mode:bool=False, gen_info:LU.GenerationInfo|None=None) -> tuple[list[int],list[int],dict[str,any]]|None:
+def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, usable_rules:list[bool]|None=None, gen_info:LU.GenerationInfo|None=None) -> tuple[list[int],list[int],dict[str,any]]|None:
     '''Returns the solution, the incomplete puzzle, and other data. Will return None if the first item of `break_holder` is True.'''
 
     if seed is None: seed = LU.get_seed()
@@ -28,7 +28,7 @@ def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, hard_mode:boo
     if full_grid is None: return None
     if is_rotated: full_grid = LU.rotate_board(full_grid, solution_generator_size)
 
-    empty_grid = breakdown(full_grid, size, seed, colors, hard_mode, gen_info=gen_info)
+    empty_grid = breakdown(full_grid, size, seed, colors, usable_rules, gen_info=gen_info)
     if empty_grid is None: return None
     quality = round(LU.count_empty_tiles(empty_grid) / (size[0] * size[1]) * 100) # how many empty tiles there are
     other_data = {"seed": seed, "quality": quality}
@@ -36,7 +36,7 @@ def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, hard_mode:boo
     return full_grid, empty_grid, other_data
 
 
-def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, hard_mode:bool=False, gen_info:LU.GenerationInfo|None=None) -> list[int]:
+def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, usable_rules:list[bool]|None=None, gen_info:LU.GenerationInfo|None=None) -> list[int]:
     '''Removes tiles from the board so it's an actual puzzle.
     basically how this works is that it picks a random tile from the board,
     and then picks an empty tile. That empty tile is picked in order of in
@@ -73,7 +73,7 @@ def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, hard
         current_state = LU.copy_tiles(tiles)
         LU.restore_cache(tiles, tiles_cache, colors) # TODO: if the board is full except for one after this function; assume it's completable (and measure performance)
         # was_successful = LevelSolverOld.solve(size, tiles, tile_index, dependencies, colors)
-        was_successful = LevelSolver.solve(size, colors, tiles, tile_index, dependencies, hard_mode=hard_mode)
+        was_successful = LevelSolver.solve(size, colors, tiles, tile_index, dependencies, usable_rules=usable_rules)
         tiles_cache = tiles
         tiles = current_state
         # debug_string += str(int(was_successful))
@@ -96,10 +96,10 @@ if __name__ == "__main__":
     size = 6
     seed = 34
     colors = 2
-    hard_mode = True
+    usable_rules = [True, True, True, True, True]
     size_tuple = (size, size) if isinstance(size, int) else size
-    # full, empty, other_data = cProfile.run("generate(size_tuple, seed, colors, hard_mode=hard_mode)")
-    full, empty, other_data = generate(size_tuple, seed, colors=colors, hard_mode=hard_mode)
+    # full, empty, other_data = cProfile.run("generate(size_tuple, seed, colors, usable_rules)")
+    full, empty, other_data = generate(size_tuple, seed, colors, usable_rules)
     solved = LU.expand_board(colors, empty)
 
     print("FULL:")
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     print("EMPTY:")
     LU.print_board(empty, size_tuple)
     solved = LU.expand_board(colors, empty)
-    LevelSolver.solve(size, colors, solved, None, None, True, hard_mode=hard_mode)
+    LevelSolver.solve(size, colors, solved, None, None, True, usable_rules=usable_rules)
     if not LU.boards_match(full, solved, colors):
         print("SOLVED:")
         LU.print_board(solved, size)

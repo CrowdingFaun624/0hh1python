@@ -18,7 +18,7 @@ OUTER_RADIUS=15
 OUTER_BORDER_RADIUS = 1
 
 class SwitchButton(Button.Button):
-    def __init__(self, position:tuple[int, int], restore_objects:list[tuple[Drawable.Drawable,int]]|None=None, children:list[Drawable.Drawable]|None=None, toggle_on_action:tuple[Callable[[],list[tuple[Drawable.Drawable,int]]|None],list,dict[str,any]]|list|None=None, toggle_off_action:tuple[Callable[[],list[tuple[Drawable.Drawable,int]]|None],list,dict[str,any]]|list|None=None, start_toggled:bool=False, start_enabled:bool=True) -> None:
+    def __init__(self, position:tuple[int, int], toggle_on_action:tuple[Callable[[],list[tuple[Drawable.Drawable,int]]|None],list,dict[str,any]]|list|None=None, toggle_off_action:tuple[Callable[[],list[tuple[Drawable.Drawable,int]]|None],list,dict[str,any]]|list|None=None, start_toggled:bool=False, start_enabled:bool=True) -> None:
         if toggle_on_action is None: self.toggle_on_action = []
         elif isinstance(toggle_on_action, list): self.toggle_on_action = toggle_on_action
         else: self.toggle_on_action = [toggle_on_action]
@@ -27,9 +27,9 @@ class SwitchButton(Button.Button):
         else: self.toggle_off_action = [toggle_off_action]
         self.toggled = start_toggled
         self.toggle_time = 0.0
-        self.animation = Animation.Animation(float(start_toggled), float(start_toggled), TRANSITION_TIME, Bezier.ease)
-        self.color = Animation.MultiAnimation(self.__get_color(), self.__get_color(), TRANSITION_TIME, Bezier.ease)
-        super().__init__(self.get_new_surface(time.time()), position, restore_objects, children, (self.toggle,), None, start_enabled)
+        self.animation = Animation.Animation(float(start_toggled), None, TRANSITION_TIME, Bezier.ease)
+        self.color = Animation.MultiAnimation(self.__get_color(), None, TRANSITION_TIME, Bezier.ease)
+        super().__init__(self.get_new_surface(time.time()), position, [], [], (self.toggle,), None, start_enabled)
 
     def __get_color(self) -> tuple[int,int,int]:
         if self.toggled: color = Colors.get("switch_button.inner_on")
