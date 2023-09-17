@@ -20,9 +20,11 @@ TEXTURES = {
     "eye": ["eye_dark.png", "eye_light.png"],
     "history": ["history_dark.png", "history_light.png"],
     "leaderboards": ["leaderboards_dark.png", "leaderboards_light.png"],
-    "lock": "lock.png",
+    "lock": "lock_light.png",
+    "locked": ["lock_dark.png", "lock_light.png"],
     "logo_32": "logo_32.png",
     "logo_1024": "logo_1024.png",
+    "unlocked": ["unlocked_dark.png", "unlocked_light.png"],
 }
 
 def get(name:str) -> pygame.Surface:

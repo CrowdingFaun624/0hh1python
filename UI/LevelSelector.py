@@ -1,8 +1,9 @@
 import time
-from typing import Callable, Any
+from typing import Any, Callable
 
 import pygame
 
+import LevelCreator.LevelUtilities as LU
 import UI.ButtonPanel as ButtonPanel
 import UI.Colors as Colors
 import UI.Drawable as Drawable
@@ -11,10 +12,10 @@ import UI.FakeBoard as FakeBoard
 import UI.Fonts as Fonts
 import UI.Slider as Slider
 import UI.SwitchButton as SwitchButton
+import UI.Textures as Textures
 import Utilities.Animation as Animation
 import Utilities.Bezier as Bezier
 import Utilities.LocalLeaderboard as LocalLeaderboard
-import LevelCreator.LevelUtilities as LU
 
 LEVELS = {2: (4, 20), 3: (3, 15), 4: (4, 12)}
 RULES_DEFAULT = [1, 1, 1, 10, 1]
@@ -49,6 +50,7 @@ class LevelSelector(Enablable.Enablable):
         self.surface = None # self.get_surface()
         self.mousing_over_board = False
         self.board_rules = RULES_DEFAULT
+        self.lock_preview_ratio = True
 
         self.preview_horizontal_size = 4
         self.preview_vertical_size = 4
@@ -77,6 +79,7 @@ class LevelSelector(Enablable.Enablable):
         children.extend(self.get_size_sliders())
         children.append(self.get_colors_slider())
         children.extend(self.get_rules_toggles())
+        children.append(self.get_lock_object())
 
         return children
 
@@ -179,6 +182,30 @@ class LevelSelector(Enablable.Enablable):
         self.display_board.reload(0.0)
         return self.display_board
 
+    def get_lock_object_surface(self, locked:bool) -> tuple[pygame.Surface,tuple[int,int]]:
+        '''Returns the surface and position of the lock object.'''
+        name = {True: "locked", False: "unlocked"}[locked]
+        lock_texture = Textures.get(name)
+        board_top, board_bottom, board_left, board_right = self.get_board_positioning_constraints()
+        top_constraint = board_top - Slider.WIDTH
+        bottom_constraint = board_top
+        left_constraint = board_left - Slider.WIDTH
+        right_constraint = board_left
+        space_width = right_constraint - left_constraint
+        space_height = bottom_constraint - top_constraint
+        horizontal_ratio = (space_width * 0.9) / lock_texture.get_width()
+        vertical_ratio = (space_height * 0.9) / lock_texture.get_height()
+        scale_ratio = max(horizontal_ratio, vertical_ratio)
+        lock_surface = pygame.transform.scale_by(lock_texture, scale_ratio)
+        position = (left_constraint + (space_width - lock_surface.get_width()) / 2, top_constraint + (space_height - lock_surface.get_height()) / 2)
+        self.lock_object_constraints = (top_constraint, bottom_constraint, left_constraint, right_constraint)
+        return lock_surface, position
+
+    def get_lock_object(self) -> Drawable.Drawable:
+        lock_surface, position = self.get_lock_object_surface(self.lock_preview_ratio)
+        self.lock_object = Drawable.Drawable(lock_surface, position)
+        return self.lock_object
+
     def get_board_text_object(self) -> tuple[Drawable.Drawable,Drawable.Drawable]:
         board_position, board_size = self.get_board_positioning()
         text = "%i×%i" % (self.preview_horizontal_size, self.preview_vertical_size)
@@ -205,10 +232,16 @@ class LevelSelector(Enablable.Enablable):
 
     def get_size_slider_functions(self) -> tuple[tuple[Callable,list[Any],dict[str,Any]],tuple[Callable,list[Any],dict[str,Any]],int]:
         def adjust_size(index:int, is_vertical:bool) -> None:
-            assert self.children[3] is self.display_board
             size = size_list[index]
             if is_vertical: self.preview_vertical_size = size
             else: self.preview_horizontal_size = size
+            if self.lock_preview_ratio:
+                if is_vertical:
+                    self.preview_horizontal_size = size
+                    self.width_slider.set(self.height_slider.current_position)
+                else:
+                    self.preview_vertical_size = size
+                    self.height_slider.set(self.width_slider.current_position)
             self.display_board.size = (self.preview_horizontal_size, self.preview_vertical_size)
             new_position, new_size = self.get_board_positioning()
             self.display_board.display_size = new_size
@@ -417,6 +450,13 @@ class LevelSelector(Enablable.Enablable):
                 rules = self.board_rules
                 self.board_settings = (size, color, rules)
                 self.fade_out()
+            mouse_x, mouse_y = event.__dict__["pos"]
+            lock_top, lock_bottom, lock_left, lock_right = self.lock_object_constraints
+            if mouse_x >= lock_left and mouse_x < lock_right and mouse_y >= lock_top and mouse_y < lock_bottom:
+                self.lock_preview_ratio = not self.lock_preview_ratio
+                lock_surface, lock_position = self.get_lock_object_surface(self.lock_preview_ratio)
+                self.lock_object.surface = lock_surface
+                self.lock_object.position = lock_position
         def mouse_motion() -> None:
             self.test_for_mouse_over_board(event.__dict__["pos"])
 
