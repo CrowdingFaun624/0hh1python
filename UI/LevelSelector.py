@@ -3,7 +3,6 @@ from typing import Any, Callable
 
 import pygame
 
-import LevelCreator.LevelUtilities as LU
 import UI.ButtonPanel as ButtonPanel
 import UI.Colors as Colors
 import UI.Drawable as Drawable

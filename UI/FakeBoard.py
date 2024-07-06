@@ -1,10 +1,8 @@
 import time
-from typing import Callable, Any
-
-import pygame
 
 import UI.Drawable as Drawable
 import UI.Tile as Tile
+
 
 class FakeBoard(Drawable.Drawable):
     def __init__(self, size:tuple[int,int], colors:int, contents:list[int|list[int]]|None, position:tuple[int,int], display_size:tuple[int,int]) -> None:

@@ -1,5 +1,5 @@
 import time
-from typing import Callable, Any
+from typing import Any, Callable
 
 import pygame
 

@@ -4,6 +4,7 @@ import pygame
 
 import Utilities.Settings as Settings
 
+
 def get_textures() -> dict[str,pygame.Surface]:
     file_list = os.listdir("./_img")
     output:dict[str,pygame.Surface] = {}

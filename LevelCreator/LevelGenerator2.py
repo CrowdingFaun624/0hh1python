@@ -6,8 +6,8 @@ try:
     import LevelCreator.LevelValidator as LevelValidator
 except ImportError:
     import LevelSolver
-    import LevelValidator
     import LevelUtilities as LU
+    import LevelValidator
 
 def generate_solution(size:tuple[int,int], seed:int=None, colors:int=2) -> list[int]:
     # wave collapse algorithm

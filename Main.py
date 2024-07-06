@@ -6,7 +6,6 @@ import UI.Colors as Colors
 import UI.Drawable as Drawable
 import UI.Textures as Textures
 import UI.UIManager as UIManager
-import UI.FakeBoard as FakeBoard
 
 
 def extend_objects(objects_input:list[Drawable.Drawable], extension:list[tuple[Drawable.Drawable,int]]) -> None:

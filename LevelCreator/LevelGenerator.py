@@ -5,8 +5,6 @@ import random
 import re
 from math import ceil
 
-from numpy import base_repr, binary_repr
-
 try:
     import LevelCreator.LevelUtilities as LU
 except ImportError:

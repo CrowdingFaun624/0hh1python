@@ -1,3 +1,5 @@
+from typing import Iterator
+
 try:
     import LevelCreator.LevelSolver as LevelSolver
     import LevelCreator.LevelUtilities as LU
@@ -7,7 +9,7 @@ except ImportError:
     import LevelUtilities as LU
     import LevelValidator
 
-def get_incrementing_tile_number(maximum_digits:list[int]) -> list[list[int]]:
+def get_incrementing_tile_number(maximum_digits:list[int]) -> Iterator[list[int]]:
     '''Generates a list of integers increasing from 0 in all to maximum in all, such that each digit is always less than its given maximum.'''
     number = [0] * len(maximum_digits)
     total_length = 1
@@ -25,7 +27,7 @@ def get_incrementing_tile_number(maximum_digits:list[int]) -> list[list[int]]:
             else: break
             if index < 0: break
 
-def get_all_boards(size:tuple[int,int], colors:int, tiles:list[list[int]]) -> list[list[list[int]]]:
+def get_all_boards(size:tuple[int,int], colors:int, tiles:list[list[int]]) -> Iterator[list[list[int]]]:
     '''Generates all boards whose tiles are within the possibility of the tiles given.'''
     empty_indexes = [index for index in range(size[0] * size[1]) if len(tiles[index]) > 1]
     tile_lengths = [len(tile) for tile in tiles]

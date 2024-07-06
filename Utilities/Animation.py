@@ -1,7 +1,5 @@
 import time
-from collections.abc import Callable
-
-import pygame
+from typing import Callable
 
 wiggle = { # angle (degrees)
     0.0: 3.0,

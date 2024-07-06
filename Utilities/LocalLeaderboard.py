@@ -1,5 +1,3 @@
-import json
-
 import Utilities.JsonFileManager as JsonFileManager
 
 SCORE_DELTA_TIME = 1 / 60

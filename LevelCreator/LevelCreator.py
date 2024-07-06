@@ -4,16 +4,16 @@ import random
 
 try:
     import LevelCreator.LevelGenerator as LevelGenerator
-    import LevelCreator.LevelUtilities as LU
     import LevelCreator.LevelSolver as LevelSolver
-    import LevelCreator.LevelValidator as LevelValidator
     import LevelCreator.LevelSolverBruteForce as LevelSolverBruteForce
+    import LevelCreator.LevelUtilities as LU
+    import LevelCreator.LevelValidator as LevelValidator
 except ImportError:
     import LevelGenerator
-    import LevelUtilities as LU
     import LevelSolver
-    import LevelValidator
     import LevelSolverBruteForce
+    import LevelUtilities as LU
+    import LevelValidator
 
 def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, usable_rules:list[bool]|None=None, gen_info:LU.GenerationInfo|None=None) -> tuple[list[int],list[int],dict[str,any]]|None:
     '''Returns the solution, the incomplete puzzle, and other data. Will return None if the first item of `break_holder` is True.'''

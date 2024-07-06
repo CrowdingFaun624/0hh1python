@@ -1,3 +1,5 @@
+from typing import Iterator
+
 try:
     import LevelCreator.LevelUtilities as LU
     import LevelCreator.LevelValidator as LevelValidator
@@ -50,7 +52,7 @@ def solve_three_in_a_row(colors:int, indexes:list[int], tiles:list[list[int]], d
     previous_tile2:int|None = None # tile twice before current
     previous_tile3:int|None = None # tile thrice before current; used for finding value on other side of three-in-a-row
 
-    def chain(*iterables) -> list[int]: # https://stackoverflow.com/questions/35205162/iterating-over-two-lists-one-after-another
+    def chain(*iterables) -> Iterator[list[int]]: # https://stackoverflow.com/questions/35205162/iterating-over-two-lists-one-after-another
         for iterable in iterables:
             yield from iterable
     for tile_index in chain(indexes, [None]):

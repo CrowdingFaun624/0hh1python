@@ -1,5 +1,6 @@
 import UI.Drawable as Drawable
 
+
 class Enablable(Drawable.Drawable):
     def __init__(self, *args, **kwargs) -> None:
         self.enabled = kwargs["start_enabled"] if "start_enabled" in kwargs else True

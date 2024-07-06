@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from typing import Callable
 
 import pygame
 
@@ -6,7 +6,6 @@ import UI.Button as Button
 import UI.Drawable as Drawable
 import UI.Enablable as Enablable
 import UI.Textures as Textures
-
 
 MAX_BUTTON_SIZE = 64 # buttons with textures larger than this will be shrunk
 

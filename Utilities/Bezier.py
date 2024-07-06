@@ -1,5 +1,6 @@
-from collections.abc import Callable
 from bisect import bisect
+from typing import Callable
+
 
 def cube(p1:float,  p2:float, t:float) -> float:
     return cubic_bezier(0.0, p1, p2, 1.0, t)
