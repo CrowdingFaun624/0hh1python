@@ -58,7 +58,7 @@ class Slider(Button.Button):
             point2 = (self.position[0] + self.length, self.position[1] + WIDTH)
         return point1[0], point1[1], point2[0], point2[1]
 
-    def display(self) -> pygame.Surface:
+    def display(self) -> pygame.Surface|None:
         current_time = time.time()
         if current_time - self.switch_time <= TRANSITION_TIME:
             self.surface = self.get_new_surface(current_time)
@@ -98,7 +98,7 @@ class Slider(Button.Button):
             self.switch_time = time.time()
         else: self.surface = self.get_new_surface(time.time())
 
-    def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> list[tuple[Drawable.Drawable]]|None:
+    def tick(self, events:list[pygame.event.Event], screen_position:tuple[float,float]) -> list[Drawable.Drawable]|None:
 
         def mouse_down() -> None:
             if event.__dict__["button"] not in VALID_MOUSE_BUTTONS: return

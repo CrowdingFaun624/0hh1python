@@ -15,7 +15,7 @@ except ImportError:
     import LevelUtilities as LU
     import LevelValidator
 
-def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, usable_rules:list[bool]|None=None, gen_info:LU.GenerationInfo|None=None) -> tuple[list[int],list[int],dict[str,any]]|None:
+def generate(size:int|tuple[int,int], seed:int|None=None, colors:int=2, usable_rules:list[int]|None=None, gen_info:LU.GenerationInfo|None=None) -> tuple[list[int],list[int],dict[str,any]]|None:
     '''Returns the solution, the incomplete puzzle, and other data. Will return None if the first item of `break_holder` is True.'''
 
     if seed is None: seed = LU.get_seed()
@@ -37,7 +37,7 @@ def generate(size:int|tuple[int,int], seed:int=None, colors:int=2, usable_rules:
     random.seed(after_seed)
     return full_grid, empty_grid, other_data
 
-def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, usable_rules:list[bool]|None=None, gen_info:LU.GenerationInfo|None=None) -> list[int]:
+def breakdown(tiles:list[int], size:tuple[int,int], seed:int, colors:int=2, usable_rules:list[int]|None=None, gen_info:LU.GenerationInfo|None=None) -> list[int]:
     '''Removes tiles from the board so it's an actual puzzle.
     basically how this works is that it picks a random tile from the board,
     and then picks an empty tile. That empty tile is picked in order of in

@@ -11,7 +11,7 @@ import UI.LoadingScreen as LoadingScreen
 import UI.Scrollbar as Scrollbar
 import UI.SettingsMenu as SettingsMenu
 
-reload_carrier = None # set to `[False]` by Main.py
+reload_carrier:list[bool]|None = None # set to `[False]` by Main.py
 
 def get_main_object() -> Drawable.Drawable:
     reload()

@@ -51,7 +51,7 @@ class SwitchButton(Button.Button):
             return_stuff = self.call(self.toggle_on_action)
         return return_stuff
     
-    def display(self) -> pygame.Surface:
+    def display(self) -> pygame.Surface|None:
         current_time = time.time()
         if current_time - self.toggle_time <= TRANSITION_TIME:
             self.surface = self.get_new_surface(current_time)

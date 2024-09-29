@@ -62,7 +62,7 @@ class LoadingBar(Drawable.Drawable):
         surface.set_alpha(self.opacity)
         return surface
     
-    def display(self) -> pygame.Surface:
+    def display(self) -> pygame.Surface|None:
         self.surface = self.get_surface()
         return super().display()
 
@@ -171,7 +171,7 @@ class LoadingScreen(Drawable.Drawable):
         self.calculate_sizes()
         return super().reload(current_time)
 
-    def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> list[tuple[Drawable.Drawable]]|None:
+    def tick(self, events:list[pygame.event.Event], screen_position:tuple[float,float]) -> list[Drawable.Drawable]|None:
         if len(self.board.generation_info.exception_holder) > 0 and not self.is_showing_error:
             self.show_error(self.board.generation_info.exception_holder[0])
         if self.board.is_finished_loading and not self.is_fading:

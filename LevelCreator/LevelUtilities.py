@@ -134,8 +134,8 @@ class GenerationInfo(): # for communication between threads
         self.breaker = False
         self.generation_progress = 0.0
         self.total_clears = 0
-        self.seed = None
-        self.exception_holder = None
+        self.seed:int|None = None
+        self.exception_holder:list[Exception]|None = None
 
 def int_to_string(number:int, base:int) -> str: # https://stackoverflow.com/questions/2267362/how-to-convert-an-integer-to-a-string-in-any-base
     return binary_repr(number) if base == 2 else base_repr(number, base)

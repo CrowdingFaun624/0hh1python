@@ -1,27 +1,35 @@
 import math
+from typing import Sequence
 
 import pygame
 
+import Utilities.Exceptions as Exceptions
+
 
 class Drawable():
-    def __init__(self, surface:pygame.Surface|None=None, position:tuple[int,int]|None=None, restore_objects:list[tuple["Drawable",int]]|None=None, children:list["Drawable"]|None=None) -> None:
+    def __init__(self, surface:pygame.Surface|None=None, position:tuple[float,float]|None=None, restore_objects:list[tuple["Drawable",int]]|None=None, children:Sequence["Drawable"]|None=None) -> None:
         self.surface = surface
-        self.position = (0, 0) if position is None else position
+        self.position:tuple[float,float] = (0, 0) if position is None else position
         self.should_destroy = False
         self.restore_objects = [] if restore_objects is None else restore_objects
         self.children = [] if children is None else children
-    
-    def display(self) -> pygame.Surface:
+
+    def get_surface(self) -> pygame.Surface:
+        if self.surface is None:
+            raise Exceptions.AttributeNoneError("surface", self)
         return self.surface
 
-    def rotate_vector(self, vector:tuple[int,int], angle:float) -> tuple[int,int]:
+    def display(self) -> pygame.Surface|None:
+        return self.surface
+
+    def rotate_vector(self, vector:tuple[int,int], angle:float) -> tuple[float,float]:
         x = vector[0] * math.cos(angle) - vector[1] * math.sin(angle)
         y = vector[0] * math.sin(angle) + vector[1] * math.cos(angle)
         return x, y
 
-    def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> list[tuple["Drawable"]]|None:
+    def tick(self, events:list[pygame.event.Event], screen_position:tuple[float,float]) -> list["Drawable"]|None:
         '''Used for non-display events and adding additional elements to the objects list. If the integer is -1, it will prepend, and if it's 1, it will append.'''
-        pass
+        ...
 
     def restore(self) -> None:
         self.should_destroy = False
@@ -68,7 +76,7 @@ class Drawable():
             child.set_alpha(value)
 
     # https://stackoverflow.com/questions/15098900/how-to-set-the-pivot-point-center-of-rotation-for-pygame-transform-rotate
-    def rotate_around_point(self, surface, angle:int, pivot:tuple[int,int], offset:tuple[int,int]) -> pygame.Surface:
+    def rotate_around_point(self, surface, angle:int, pivot:tuple[int,int], offset:tuple[int,int]) -> tuple[pygame.Surface, pygame.Rect]:
         rotated_image = pygame.transform.rotozoom(surface, -angle, 1)
         rotated_offset = self.rotate_vector(offset, angle)
         rect = rotated_image.get_rect(center=pivot + rotated_offset)

@@ -36,16 +36,28 @@ class ExceptionThread(threading.Thread):
     def run(self) -> Any:
         self.exception = None
         try:
-            self.return_value = self._target(*self._args, **self._kwargs)
+            self.return_value = self._target(*self._args, **self._kwargs) # type: ignore
         except BaseException as e:
             self.exception = e
-            self.exception_holder.append(e)
+            if self.exception_holder is not None:
+                self.exception_holder.append(e)
         finally:
-            del self._target, self._args, self._kwargs
+            del self._target, self._args, self._kwargs # type: ignore
 
 class Board(Enablable.Enablable):
 
-    def __init__(self, size:int|tuple[int,int], seed:int=None, colors:int=2, usable_rules:list[bool]|None=None, position:tuple[int,int]=(0,0), pixel_size:int=640, restore_objects:list[tuple[Drawable.Drawable,int]]|None=None, children:list[Drawable.Drawable]|None=None, window_size:tuple[int,int]=None) -> None:
+    def __init__(
+        self,
+        size:int|tuple[int,int],
+        seed:int|None=None,
+        colors:int=2,
+        usable_rules:list[int]|None=None,
+        position:tuple[int,int]=(0,0),
+        pixel_size:int=640,
+        restore_objects:list[tuple[Drawable.Drawable,int]]|None=None,
+        children:list[Drawable.Drawable]|None=None,
+        window_size:tuple[int,int]|None=None
+    ) -> None:
         if isinstance(size, int): size = (size, size)
         super().__init__()
 
@@ -72,7 +84,7 @@ class Board(Enablable.Enablable):
         if usable_rules[4] > int(max(size) // colors): usable_rules[4] = int(max(size) // colors)
         self.usable_rules = usable_rules
 
-        self.__current_mouse_over:int = None
+        self.__current_mouse_over:int|None = None
         self.show_locks = False # TODO: make this carry over between board instances.
         self.is_complete = False # True only when the board locks after correctly completing it.
         self.opacity = Animation.Animation(0.0, None, BOARD_FADE_IN_TIME, Bezier.ease_in)
@@ -94,7 +106,7 @@ class Board(Enablable.Enablable):
         self.rewind_final_tile:int|None = None # tile to highlight after finish rewind.
 
         # self.loading_screen_init()
-        exception_holder = []
+        exception_holder:list[Exception] = []
         self.generation_thread = ExceptionThread(target=self.get_board_from_seed, exception_holder=exception_holder)
         self.generation_info = LU.GenerationInfo()
         self.generation_info.exception_holder=exception_holder
@@ -109,7 +121,7 @@ class Board(Enablable.Enablable):
         self.kill_generator()
         super().delete()
 
-    def get_board_from_seed(self) -> list[int]:
+    def get_board_from_seed(self) -> None:
         self.full_board, self.empty_board, self.other_data, self.tiles = None, None, None, None
         # return
         self.generation_info.seed = self.seed
@@ -145,7 +157,7 @@ class Board(Enablable.Enablable):
         return lock_surface
 
     def init_tiles(self) -> None:
-        self.tiles:list[Tile.Tile] = []
+        self.tiles:list[Tile.Tile]|None = []
         self.axis_counters:list[AxisCounter.AxisCounter] = []
         current_time = time.time()
         lock_surface = self.get_lock_surface()
@@ -226,7 +238,7 @@ class Board(Enablable.Enablable):
             surface_size = surface.get_size()
             self.timer_text.position = (self.position[0] + (self.pixel_size - surface_size[0]) / 2, bottom_constraint - surface_size[1])
 
-    def display(self) -> pygame.Surface:
+    def display(self) -> pygame.Surface|None:
         self.get_timer_text()
         current_time = time.time()
         opacity = self.opacity.get(current_time)
@@ -236,7 +248,8 @@ class Board(Enablable.Enablable):
                 tile_surface_requirements = tile.get_conditions(current_time)
                 tile.reload_for_board(tile_surface_requirements, current_time)
                 self.tiles[index].last_tick_time = current_time
-        self.set_alpha(opacity * 255)
+        self.set_alpha(int(opacity * 255))
+        return None
 
     def reload(self, current_time:float) -> None:
         # self.children = []
@@ -410,7 +423,7 @@ class Board(Enablable.Enablable):
         else:
             self.tiles[index].set_value(value)
 
-    def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> list[tuple[Drawable.Drawable]]|None:
+    def tick(self, events:list[pygame.event.Event], screen_position:tuple[float,float]) -> list[Drawable.Drawable]|None:
         def get_relative_mouse_position(position:tuple[float,float]|None=None) -> tuple[float,float]:
             if position is None: position = event.__dict__["pos"]
             return position[0] - self.tile_origin[0], position[1] - self.tile_origin[1]

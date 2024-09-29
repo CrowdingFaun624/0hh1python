@@ -1,12 +1,11 @@
 import math
 import time
-from typing import Any
+from typing import Any, cast
 
 import pygame
 
 import UI.Colors as Colors
 import UI.Drawable as Drawable
-import UI.Enablable as Enablable
 import UI.Fonts as Fonts
 import UI.Textures as Textures
 import UI.Tile as Tile
@@ -36,11 +35,11 @@ class AxisCounter(Tile.Tile):
         self.checkboxes = checkboxes
 
 
-        self.previous_state = None
-        self.previous_tiles_values = None
+        self.previous_state:list[Any]|None = None
+        self.previous_tiles_values:list[int|list[int]]|None = None
         self.checked = False
         self.enabled = True
-        self.opacity = 0
+        self.opacity = 0.0
         self.opacity_animations = [Animation.Animation(1.0, None, COUNTERS_OPACITY_TIME, Bezier.ease_out, current_time) for i in range(colors)]
         self.check_opacity = Animation.Animation(float(self.checked), float(self.checked), CHECK_OPACITY_TIME, Bezier.ease_out, current_time)
         if self.checkboxes:
@@ -55,7 +54,9 @@ class AxisCounter(Tile.Tile):
     def get_surface(self, current_time:float) -> pygame.Surface:
         surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
         if self.counters:
-            surface.blit(self.get_counter_surface(current_time), (0, 0))
+            counter_surface = self.get_counter_surface(current_time)
+            if counter_surface is not None:
+                surface.blit(counter_surface, (0, 0))
         if self.checkboxes:
             surface.blit(self.get_checkbox_surface(current_time), (0, 0))
         return surface
@@ -67,10 +68,10 @@ class AxisCounter(Tile.Tile):
             check_size = self.check_texture.get_size()
             check_position = ((self.size - check_size[0]) / 2, (self.size - check_size[1]) / 2)
             base_surface.blit(self.check_texture, check_position)
-            base_surface.set_alpha(255 * check_opacity)
+            base_surface.set_alpha(int(255 * check_opacity))
         return base_surface
 
-    def get_counter_surface(self, current_time:float) -> pygame.Surface:
+    def get_counter_surface(self, current_time:float) -> pygame.Surface|None:
         if len(self.tiles_to_count) != self.length: return None
         full_counts, all_counts = self.get_count()
         size = int(self.length // self.colors)
@@ -110,8 +111,8 @@ class AxisCounter(Tile.Tile):
         text_centers = [((self.size / 2 + (ray_length / 2) * math.sin(ray_direction)), self.size / 2 + (ray_length / 2) * -math.cos(ray_direction)) for ray_length, ray_direction in zip(ray_lengths, ray_directions)]
         font = Fonts.get_font("josefin", (math.pi / self.colors) * self.size * 0.25)
         font_surfaces = [font.render(text, True, font_color) for text, font_color in zip(texts, font_colors)]
-        for text_opacity, font_surface in zip(text_opacities, font_surfaces): font_surface.set_alpha(text_opacity * 255)
-        base_surface.blits((font_surface, (text_center[0] - font_surface.get_width() / 2, text_center[1] - font_surface.get_height() / 2)) for font_surface, text_center in zip(font_surfaces, text_centers))
+        for text_opacity, font_surface in zip(text_opacities, font_surfaces): font_surface.set_alpha(int(text_opacity * 255))
+        base_surface.blits([(font_surface, (text_center[0] - font_surface.get_width() / 2, text_center[1] - font_surface.get_height() / 2)) for font_surface, text_center in zip(font_surfaces, text_centers)])
         return base_surface
 
     def get_count(self) -> tuple[list[int],list[int]]:
@@ -121,7 +122,7 @@ class AxisCounter(Tile.Tile):
         if isinstance(self.tiles_to_count[0].value, list):
             full_count = [0] * self.colors
             all_count = [0] * self.colors
-            for value in values:
+            for value in cast(list[list[int]], values):
                 if len(value) == 1:
                     full_count[value[0] - 1] += 1
                     all_count[value[0] - 1] += 1
@@ -134,7 +135,7 @@ class AxisCounter(Tile.Tile):
             all_count = [full + empty_count for full in full_count]
         return full_count, all_count
 
-    def display(self) -> pygame.Surface:
+    def display(self) -> pygame.Surface|None:
         current_time = time.time()
         current_state, current_tiles_values = self.get_conditions(current_time)
         if current_state != self.previous_state:
@@ -162,8 +163,8 @@ class AxisCounter(Tile.Tile):
     def set_alpha(self, value:int, this_surface:pygame.Surface|None=None) -> None:
         self.opacity = value / 255
         return super().set_alpha(value, this_surface)
-    
-    def tick(self, events:list[pygame.event.Event], screen_position:tuple[int, int]) -> list[tuple[Drawable.Drawable]]|None:
+
+    def tick(self, events:list[pygame.event.Event], screen_position:tuple[float, float]) -> list[Drawable.Drawable]|None:
 
         def mouse_button_down() -> None:
             if not self.enabled: return

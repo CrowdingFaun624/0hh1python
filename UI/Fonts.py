@@ -16,7 +16,7 @@ loading_screen_progress = pygame.font.Font(JOSEFINE_FILE, 15)
 
 other_fonts:dict[tuple[str,int],pygame.font.Font] = {} # for fonts that can change in size.
 
-def get_font(font_name:str, size:int) -> pygame.font.Font:
+def get_font(font_name:str, size:float) -> pygame.font.Font:
     if not isinstance(size, int): size = int(size)
     if (font_name, size) in other_fonts: return other_fonts[(font_name, size)]
     if font_name not in fonts: raise IndexError("Font \"%s\" does not exist!" % font_name)

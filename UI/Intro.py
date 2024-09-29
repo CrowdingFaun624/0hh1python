@@ -12,17 +12,18 @@ FADE_IN_TIME = 0.25
 FADE_OUT_TIME = 0.1
 
 class Intro(Drawable.Drawable):
-    def __init__(self, display_size:tuple[int,int], exit_function:Callable[["Intro"],list[tuple[Drawable.Drawable,int]]]) -> None:
+    def __init__(self, display_size:tuple[int,int], exit_function:Callable[["Intro"],list[Drawable.Drawable]]) -> None:
         surface = pygame.transform.scale(Textures.get("logo_1024"), (min(display_size), min(display_size)))
         self.opacity = Animation.Animation(1.0, 0.0, FADE_IN_TIME, Bezier.ease_in)
         self.exit_function = exit_function
         super().__init__(surface, (0, 0))
     
-    def display(self) -> pygame.Surface:
-        self.surface.set_alpha(255 * self.opacity.get())
-        return self.surface
+    def display(self) -> pygame.Surface|None:
+        surface = self.get_surface()
+        surface.set_alpha(int(255 * self.opacity.get()))
+        return surface
 
-    def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> list[tuple[Drawable.Drawable]]|None:
+    def tick(self, events:list[pygame.event.Event], screen_position:tuple[float,float]) -> list[Drawable.Drawable]|None:
         current_time = time.time()
         for event in events:
             if event.type == pygame.MOUSEBUTTONDOWN:

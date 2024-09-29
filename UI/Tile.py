@@ -22,7 +22,7 @@ def get_color_name(value:int, parity:bool, tile:"Tile"=None) -> str:
     return color_string
 
 class Tile(Enablable.Enablable):
-    def __init__(self, index:int, size:int, value:int|list[int], is_even:bool, colors:int, current_time:float, start_progress:float=1.0, is_locked:bool=False, can_modify:bool=True, show_lock:bool=False, lock_surface:pygame.Surface|None=None, mode:str|None=None, empty_color_name:str="tile.0", multicolor_transparencies:tuple[float,float,float]=(0.0625,0.25,0.75)) -> None:
+    def __init__(self, index:int, size:float, value:int|list[int], is_even:bool, colors:int, current_time:float, start_progress:float=1.0, is_locked:bool=False, can_modify:bool=True, show_lock:bool=False, lock_surface:pygame.Surface|None=None, mode:str|None=None, empty_color_name:str="tile.0", multicolor_transparencies:tuple[float,float,float]=(0.0625,0.25,0.75)) -> None:
         self.index = index
         self.size = size
         self.value = value

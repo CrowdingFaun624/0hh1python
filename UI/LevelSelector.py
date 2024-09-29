@@ -40,7 +40,7 @@ class LevelSelector(Enablable.Enablable):
         self.display_size = display_size
         self.exit_function = exit_function
         self.settings_function, self.leaderboards_function = screen_functions
-        self.board_settings = None
+        self.board_settings:tuple[tuple[int,int],int,list[int]]|None = None
         self.is_fading_out = False
         self.has_returned_level = False
         self.enabled = True
@@ -378,7 +378,7 @@ class LevelSelector(Enablable.Enablable):
     #         surface.blit(font_surface, (x_position + font_x, y_position + font_y)) # TODO: font vertical positioning is messed up.
     #     return surface
 
-    def display(self) -> pygame.Surface:
+    def display(self) -> pygame.Surface|None:
         this_opacity = self.opacity.get()
         self.set_alpha(255 * this_opacity)
         board_size_text_opacity = self.level_start_opacity.get()
@@ -428,7 +428,7 @@ class LevelSelector(Enablable.Enablable):
             self.level_start_opacity.set(0.0)
         return is_over_board
 
-    def tick(self, events:list[pygame.event.Event], screen_position:list[int,int]) -> list[tuple[Drawable.Drawable,int]]|None:
+    def tick(self, events:list[pygame.event.Event], screen_position:tuple[float,float]) -> list[Drawable.Drawable]|None:
         # def get_relative_mouse_position(position:tuple[float,float]|None=None) -> tuple[float,float]:
         #     if position is None: position = event.__dict__["pos"]
         #     return position[0] - screen_position[0], position[1] - screen_position[1]

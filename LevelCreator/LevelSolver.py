@@ -313,7 +313,7 @@ def solve_rule_4(size:int, colors:int, indexes:list[int], tiles:list[list[int]],
 MAX_RULES = 6
 # [three-in-a-row, balancing, cloning, rule-4, multicolor-balancing]
 
-def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_tile_index:int|None=None, dependencies:list[list[int]]|None=None, error_on_failure:bool=False, return_on_find:bool=False, usable_rules:list[bool|int]|None=None) -> bool|int:
+def solve(size:tuple[int,int]|int, colors:int, tiles:list[list[int]], desired_tile_index:int|None=None, dependencies:list[list[int]]|None=None, error_on_failure:bool=False, return_on_find:bool=False, usable_rules:list[int]|bool|None=None) -> bool|int:
     '''Solves a board, and returns the tiles list. If `desired_tile_index` is specified or `return_on_find` is True, it will break early.
     If `dependencies` is specified, it will extend items of the list with the tiles required to find them. Returns
     if it was able to find the desired tile or not.'''

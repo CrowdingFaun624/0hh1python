@@ -50,7 +50,7 @@ while running:
     destroy_objects:list[int] = []
     for index, object in enumerate(objects):
         object_children = [object] + get_children(object)
-        tick_objects:list[tuple[Drawable.Drawable,int]] = []
+        tick_objects:list[Drawable.Drawable] = []
         for child in object_children:
             child_return = child.tick(events, child.position)
             if child_return is not None: tick_objects.extend(child_return)
@@ -76,13 +76,3 @@ for object in objects:
     object.delete()
 
 pygame.quit()
-
-# TODO: redo level selector
-#   TODO: ability to lock size w/ button so you don't have to move each slider individually.
-#   TODO: difficulty presets.
-# TODO: accessibility
-# TODO: different languages
-# TODO: tutorial
-# TODO: release?
-# TODO: global leaderboard
-# TODO: resource packs

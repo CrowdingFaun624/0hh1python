@@ -62,8 +62,8 @@ class Menu(Enablable.Enablable):
         self.is_closing = True
         self.disable()
 
-    def display(self) -> pygame.Surface:
-        self.set_alpha(255 * self.opacity.get())
+    def display(self) -> pygame.Surface|None:
+        self.set_alpha(int(255 * self.opacity.get()))
         return super().display()
 
     def restore(self) -> None:
@@ -76,7 +76,7 @@ class Menu(Enablable.Enablable):
         self.children = self.__get_additional_children() + self.get_objects()
         return super().reload(current_time)
 
-    def tick(self, events:list[pygame.event.Event], screen_position:tuple[int,int]) -> list[tuple[Drawable.Drawable]]|None:
+    def tick(self, events:list[pygame.event.Event], screen_position:tuple[float,float]) -> list[Drawable.Drawable]|None:
         if self.is_closing and self.opacity.get() == 0.0:
             self.should_destroy = True
 
